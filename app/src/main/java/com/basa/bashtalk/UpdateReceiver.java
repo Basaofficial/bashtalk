@@ -28,8 +28,8 @@ public class UpdateReceiver extends BroadcastReceiver {
                 android.content.SharedPreferences pr = c.getSharedPreferences("bashtalk", Context.MODE_PRIVATE);
                 if (pr.getBoolean("abOff", false)) {
                     // podsjetnik: vrati Samsung Auto Blocker
-                    Intent i = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("openAB", true);
-                    PendingIntent p = PendingIntent.getActivity(c, 79, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                    Intent ab = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("openAB", true);
+                    PendingIntent p = PendingIntent.getActivity(c, 79, ab, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
                     Updater.notify(c, "✅ Ažurirano na " + Updater.currentName(c), "🛡️ Dodirni i ponovo uključi Auto Blocker", p);
                 } else {
                     Updater.notify(c, "✅ #Bash Talk ažuriran", "Nova verzija " + Updater.currentName(c) + " je instalirana.",
