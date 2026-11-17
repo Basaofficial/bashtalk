@@ -225,6 +225,50 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
 #onOff{margin:auto;text-align:center;color:var(--mut);padding:30px;line-height:1.6}
 nav button{font-size:10px}
 nav button svg{width:22px;height:22px}
+/* ===== moderni chat ===== */
+#chat{background:radial-gradient(120% 60% at 50% 0%,#0b1606 0%,#000 60%)}
+.chathead{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(5,8,4,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.chav{width:40px;height:40px;border-radius:14px;background:linear-gradient(135deg,#1b2d0f,#0b1406);border:1px solid var(--g2);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;box-shadow:inset 0 0 12px rgba(141,255,26,.15)}
+.cht{flex:1;min-width:0}
+.cht b{display:block;font-size:16px}
+.cht span{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.onchip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card2);border-radius:99px;padding:6px 10px;font-size:12px;font-weight:700;max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#msgs{padding:12px 10px 8px;gap:2px}
+.day{align-self:center;margin:12px 0 6px;font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--mut);background:#0d120a;border:1px solid var(--line);padding:4px 12px;border-radius:99px;text-transform:uppercase}
+.mrow{display:flex;align-items:flex-end;gap:8px;max-width:86%;margin-top:8px;animation:pop .18s ease-out}
+.mrow.cont{margin-top:2px}
+.mrow.me{align-self:flex-end;flex-direction:row-reverse}
+@keyframes pop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+.mav{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#000}
+.mrow.cont .mav{visibility:hidden}
+.mrow .m{max-width:100%;align-self:auto;border-radius:20px;padding:8px 12px 6px;background:#121a0d;border:1px solid #1c2814;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.mrow:not(.me):not(.cont) .m{border-bottom-left-radius:6px}
+.mrow.me .m{background:linear-gradient(140deg,#a6ff4a 0%,#6fe000 55%,#4fc000 100%);border:0;color:#041000;box-shadow:0 4px 18px rgba(141,255,26,.22)}
+.mrow.me:not(.cont) .m{border-bottom-right-radius:6px}
+.mrow .m .n{font-size:13px;font-weight:800;margin:0}
+.mrow .m .via{font-size:10px;font-weight:600;color:var(--mut);margin:0 0 3px;letter-spacing:.2px;opacity:.9}
+.mrow.cont .m .n,.mrow.cont .m .via{display:none}
+.mrow .m .x{font-size:15.5px;line-height:1.4}
+.mrow .m .tm{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:10px;margin-top:2px;opacity:.75}
+.mrow.me .m .tm{color:#1b4400}
+.mrow.pv .m{box-shadow:0 0 0 1.5px var(--yel)}
+.mrow .m img{max-width:230px;border-radius:14px;margin:2px 0}
+.sys{margin:6px 0;font-size:11.5px}
+.composer{display:flex;align-items:flex-end;gap:8px;padding:8px 10px 10px;background:linear-gradient(0deg,#000 60%,rgba(0,0,0,0))}
+.cfield{flex:1;display:flex;align-items:center;background:#11180c;border:1px solid #1f2b16;border-radius:24px;padding:0 6px 0 4px;min-height:48px;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.cfield:focus-within{border-color:var(--g2);box-shadow:0 0 0 3px rgba(141,255,26,.08)}
+.cfield input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:16px;padding:12px 8px;user-select:text;-webkit-user-select:text}
+.cbtn{width:48px;height:48px;border-radius:50%;border:0;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .1s}
+.cbtn:active{transform:scale(.9)}
+.cbtn.att{width:38px;height:38px;background:none;color:var(--g);font-size:24px;font-weight:300}
+.cbtn.send,.cbtn.mic{background:var(--g);color:#000;box-shadow:0 4px 16px rgba(141,255,26,.35)}
+.cbtn svg{width:22px;height:22px}
+.cbtn.mic.rec{background:var(--red);color:#fff;animation:pulse 1s infinite}
+#send{display:none}
+.composer.typing #send{display:flex}
+.composer.typing #recBtn{display:none}
+.onrow{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:8px}
+.onrow .av{width:38px;height:38px;font-size:14px}
 #buzzFx{position:fixed;inset:0;pointer-events:none;z-index:60;box-shadow:inset 0 0 0 0 var(--yel)}
 #buzzFx.go{animation:bz .9s}
 @keyframes bz{0%,40%,80%{box-shadow:inset 0 0 80px 10px rgba(255,210,26,.7)}20%,60%,100%{box-shadow:inset 0 0 0 0 transparent}}
@@ -282,25 +326,21 @@ nav button svg{width:22px;height:22px}
 
     <!-- CHAT -->
     <section class="view" id="chat">
+      <div class="chathead">
+        <div class="chav">💬</div>
+        <div class="cht"><b id="chTitle">Kanal 1</b><span id="chSub">—</span></div>
+        <button class="onchip" id="onChip"><span class="dot" id="onDot"></span><span id="onChipT">online</span></button>
+      </div>
       <div id="msgs"></div>
       <div id="to">🔒 Privatno: <b id="toName"></b><button id="toX">✕</button></div>
       <div id="recBar"><span>⏺</span><span id="recT">0:00</span><span style="flex:1">Snimam… pusti za slanje, povuci lijevo za brisanje</span></div>
-      <div class="compose">
-        <button class="btn ic" id="attBtn">📎</button>
-        <input id="inp" placeholder="Poruka…" maxlength="1000" autocomplete="off">
-        <button class="btn ic" id="recBtn">🎤</button>
-        <button class="btn g" id="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
-      </div>
-    </section>
-
-    <!-- ONLINE -->
-    <section class="view" id="online">
-      <div id="onOff">
-        <div style="font-size:48px">🌍</div>
-        <b style="color:var(--t);font-size:17px">Online chat</b><br>
-        Kad imaš internet, ovdje pričaš i dopisuješ se sa ljudima bilo gdje – u sobama, privatno (šifrovano) i walkie-talkie glasom.<br>
-        Prijatelji bez aplikacije: <b style="color:var(--g)">basaofficial.github.io/bashtalk</b>
-        <br><br><button class="btn g" id="onRetry">Poveži se</button>
+      <div class="composer" id="composer">
+        <div class="cfield">
+          <button class="cbtn att" id="attBtn">＋</button>
+          <input id="inp" placeholder="Poruka…" maxlength="1000" autocomplete="off">
+        </div>
+        <button class="cbtn mic" id="recBtn">🎤</button>
+        <button class="cbtn send" id="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
       </div>
     </section>
 
@@ -327,6 +367,8 @@ nav button svg{width:22px;height:22px}
       </div>
       <div class="sec">Uređaji u blizini</div>
       <div id="peerList"></div>
+      <div class="sec">🌍 Online (internet)</div>
+      <div id="onList"></div>
 
       <div class="sec">Auto-povezivanje</div>
       <div class="card" id="nbCard">
@@ -378,6 +420,17 @@ nav button svg{width:22px;height:22px}
       <div class="card">
         <label style="font-size:12px;color:var(--mut);font-weight:700">NADIMAK</label>
         <input class="tin" id="nameInp" maxlength="24">
+      </div>
+
+      <div class="sec" id="onSec">🌍 Online (internet)</div>
+      <div class="card">
+        <div class="set" style="padding-top:0"><div class="l"><b>Online chat i glas</b><span>Kad ima interneta, poruke i walkie idu i preko interneta – sve u istom chatu</span></div><div class="tg" data-k="online"></div></div>
+        <div class="set"><div class="l"><b>🌉 Most offline ↔ online</b><span>Proslijedi poruke između ljudi bez interneta (npr. na -1) i onih online</span></div><div class="tg" data-k="gw"></div></div>
+        <label style="font-size:12px;color:var(--mut);font-weight:700;display:block;margin-top:12px">GRUPA (prazno = javni kanal)</label>
+        <input class="tin" id="ogIn" placeholder="npr. ekipa-1332" maxlength="40">
+        <input class="tin" id="opIn" type="password" placeholder="Šifra grupe (preporučeno)" maxlength="60">
+        <button class="btn g" id="ogSave" style="width:100%;margin-top:10px">Spremi grupu</button>
+        <div class="hint" style="margin-top:10px;text-align:left">Isto ime i šifru upišite svi. Bez grupe ideš u javni „kanal-N” koji svako može čitati. Prijatelji bez aplikacije: <b style="color:var(--g)">basaofficial.github.io/bashtalk</b> (soba = ime grupe).</div>
       </div>
 
       <div class="sec">Sigurnost i mreža</div>
@@ -455,7 +508,6 @@ nav button svg{width:22px;height:22px}
   <nav>
     <button class="act" data-v="radio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="14" height="15" rx="3"/><path d="M9 7 7 2M9 12h6M9 16h6"/></svg>Radio</button>
     <button data-v="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Chat<span class="badge" id="chatBadge"></span></button>
-    <button data-v="online"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>Online<span class="badge" id="onBadge"></span></button>
     <button data-v="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Zadaci<span class="badge" id="taskBadge"></span></button>
     <button data-v="devs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.5M7.8 16.2a6 6 0 0 1 0-8.5M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/></svg>Uređaji<span class="badge" id="devBadge"></span></button>
     <button data-v="sets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Postavke</button>
@@ -542,7 +594,7 @@ function show(v){
   $$('.view').forEach(x => x.classList.toggle('act', x.id === v));
   $$('nav button').forEach(b => b.classList.toggle('act', b.dataset.v === v));
   if (v === 'chat') { unread = 0; badge(); setTimeout(scrollChat, 30); }
-  if (v === 'online') { onUnread = 0; onBadge(); loadOnline(); }
+
 }
 $$('nav button').forEach(b => b.onclick = () => { show(b.dataset.v); A.vib && A.vib(8); });
 window.onBack = () => {
@@ -567,6 +619,7 @@ function badge(){
 function setCh(c){
   c = Math.max(1, Math.min(99, c)); st.ch = c; A.setChannel(c);
   $('#chBig').textContent = c; $('#hdrChN').textContent = c;
+  if (typeof onJoin === 'function' && onFrame && !st.ogroup) onJoin();
   renderPeers();
 }
 $('#chMinus').onclick = () => setCh((st.ch||1) - 1);
@@ -616,7 +669,7 @@ function updStatus(rxName, priv){
   }
 }
 const peersOnCh = () => peers.filter(p => p.ch === st.ch);
-const nameOf = id => (peers.find(p => p.id === id) || {}).name || '?';
+const nameOf = id => id && id.startsWith('o:') ? ((onPeople.find(p => p.id === id.slice(2)) || {}).name || '?') : ((peers.find(p => p.id === id) || {}).name || '?');
 
 /* target izbor */
 $('#targetChip').onclick = () => {
@@ -640,26 +693,52 @@ function closeSheet(){ $('#sheet').classList.remove('show'); }
 $('#sheet').onclick = e => { if (e.target.id === 'sheet') closeSheet(); };
 
 /* ---------- chat ---------- */
-function saveMsgs(){ try { localStorage.setItem('bt_msgs', JSON.stringify(msgs.slice(-300))); } catch(e){} }
+function saveMsgs(){ try { localStorage.setItem('bt_msgs', JSON.stringify(msgs.slice(-400))); } catch(e){} }
+const hue = s => { let h = 0; for (const c of String(s||'?')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 70 + (h % 290); };
+const dayKey = ts => new Date(ts).toDateString();
+function dayLabel(ts){
+  const d = new Date(ts), t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return 'Danas';
+  if (d.toDateString() === y.toDateString()) return 'Jučer';
+  return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear() + '.';
+}
+function viaText(m){
+  if (m.src === 'on') return m.gw ? 'offline → online · preko ' + esc(m.gw) : 'online · ' + esc(m.net || 'web');
+  const v = m.via || 'Wi-Fi';
+  if (v.startsWith('online→offline')) return 'online → offline' + esc(v.slice(14));
+  return 'offline · ' + esc(v);
+}
+function lastReal(before){ for (let i = before - 1; i >= 0; i--) if (!msgs[i].sys) return msgs[i]; return null; }
+function msgHtml(m, prev){
+  if (m.sys) return `<div class="sys ${m.j?'j':''}">${esc(m.text)}</div>`;
+  let h = '';
+  if (!prev || dayKey(prev.ts) !== dayKey(m.ts)) { h += `<div class="day">${dayLabel(m.ts)}</div>`; prev = null; }
+  const me = !!m.mine;
+  const who = me ? 'me' : (m.from || m.name);
+  const cont = prev && (prev.mine ? 'me' : (prev.from || prev.name)) === who && m.ts - prev.ts < 180000 && !!prev.to === !!m.to;
+  const pv = m.to ? (me ? `🔒 → ${esc(m.toName||'')}` : '🔒 privatno') : '';
+  const hu = hue(m.name);
+  let tm = hm(m.ts);
+  if (me) tm += ` <span>${m.paths || ''}</span><span id="tk_${esc(m.mid||'')}">${tick(m)}</span>`;
+  h += `<div class="mrow ${me?'me':''} ${cont?'cont':''} ${m.to?'pv':''}" id="m_${esc(m.mid||'')}">`
+    + (me ? '' : `<div class="mav" style="background:hsl(${hu},75%,62%)">${esc(initials(m.name))}</div>`)
+    + `<div class="m">`
+    + (me ? (pv ? `<div class="n" style="color:#1b4400;font-size:11px">${pv}</div>` : '') : `<div class="n" style="color:hsl(${hu},85%,68%)">${esc(m.name)} ${pv}</div><div class="via">${viaText(m)}</div>`)
+    + bodyHtml(m) + `<div class="tm">${tm}</div></div></div>`;
+  return h;
+}
+function tick(m){ if (!m.paths || m.paths.indexOf('📶') < 0) return ''; return m.total ? (m.got >= m.total ? ' ✓✓' : (m.got ? ` ✓${m.got}/${m.total}` : ' ✓')) : ''; }
 function renderMsgs(){
   const box = $('#msgs');
-  if (!msgs.length) { box.innerHTML = `<div class="empty"><div class="e">💬</div>Nema poruka.<br>Poruke idu svima na kanalu <b style="color:var(--g)">${st.ch}</b>,<br>bez interneta.</div>`; return; }
-  box.innerHTML = msgs.map(msgHtml).join('');
+  if (!msgs.length) { box.innerHTML = `<div class="empty"><div class="e">💬</div>Nema poruka.<br>Poruke idu svima u blizini (offline)<br>i preko interneta kad ga ima – sve ovdje.</div>`; return; }
+  let h = '', prev = null;
+  msgs.forEach(m => { h += msgHtml(m, prev); if (!m.sys) prev = m; });
+  box.innerHTML = h;
   scrollChat();
-}
-function msgHtml(m){
-  if (m.sys) return `<div class="sys ${m.j?'j':''}">${esc(m.text)}</div>`;
-  const me = m.mine;
-  let tick = '';
-  if (me) tick = m.total ? (m.got >= m.total ? ' ✓✓' : (m.got ? ` ✓ ${m.got}/${m.total}` : ' ✓')) : ' ·';
-  const pv = m.to ? (me ? `🔒 → ${esc(m.toName||'')}` : '🔒 privatno') : '';
-  return `<div class="m ${me?'me':''} ${m.to?'pv':''}" id="m_${esc(m.mid||'')}">`
-    + (me ? (pv?`<div class="n" style="color:#1d4a00">${pv}</div>`:'') : `<div class="n">${esc(m.name)} ${pv}</div>`)
-    + bodyHtml(m) + `<div class="tm">${hm(m.ts)}${tick}</div></div>`;
 }
 function bodyHtml(m){
   if (m.kind === 'img') return `<img src="${esc(m.url)}" data-view="${esc(m.url)}">`;
-  if (m.kind === 'voice') return `<div class="vn" data-au="${esc(m.url)}"><button>▶</button><div class="wv"><i></i></div><span style="font-size:12px;font-weight:700">${m.dur ? m.dur.toFixed(1) + ' s' : ''}</span></div>`;
+  if (m.kind === 'voice') return `<div class="vn" data-au="${esc(m.url)}"><button>▶</button><div class="wv"><i></i></div><span style="font-size:12px;font-weight:700">${m.dur ? (+m.dur).toFixed(1) + ' s' : ''}</span></div>`;
   return `<div class="x">${esc(m.text)}</div>`;
 }
 let curAu = null;
@@ -679,23 +758,33 @@ document.addEventListener('click', e => {
 });
 $('#viewer').onclick = () => $('#viewer').classList.remove('show');
 function addMsg(m){
+  if (m.mid && !m.sys && msgs.some(x => x.mid === m.mid)) return false;
+  const prev = lastReal(msgs.length);
   msgs.push(m); saveMsgs();
   const box = $('#msgs');
   if (box.querySelector('.empty')) box.innerHTML = '';
-  box.insertAdjacentHTML('beforeend', msgHtml(m));
+  box.insertAdjacentHTML('beforeend', msgHtml(m, prev));
   scrollChat();
+  return true;
 }
 function sysMsg(text, j){ addMsg({sys:1, text, j, ts:Date.now()}); }
 function scrollChat(){ const b = $('#msgs'); b.scrollTop = b.scrollHeight; }
+function rndMid(){ return Array.from(crypto.getRandomValues(new Uint8Array(8))).map(b => b.toString(16).padStart(2,'0')).join(''); }
+function onlineDmFor(to){ if (!to) return ''; if (to.startsWith('o:')) return to.slice(2); const oid = 'a' + to; return onPeople.some(p => p.id === oid) ? oid : ''; }
 function send(){
   const i = $('#inp'); const t = i.value.trim(); if (!t) return;
-  const mid = A.sendChat(t, chatTo);
-  addMsg({mid, mine:1, text:t, ts:Date.now(), to:chatTo, toName: chatTo ? nameOf(chatTo) : '', got:0, total: chatTo ? 1 : peersOnCh().length});
-  i.value = ''; i.focus();
+  const onlyOnline = chatTo.startsWith('o:');
+  let mid = '', paths = '';
+  if (!onlyOnline) { mid = A.sendChat(t, chatTo); paths += '📶'; } else mid = rndMid();
+  const dm = onlineDmFor(chatTo);
+  if ((!chatTo || dm) && onSend(dm ? {mid, text:t, dmTo:dm} : {mid, text:t})) paths += '🌍';
+  addMsg({mid, mine:1, text:t, ts:Date.now(), to:chatTo, toName: chatTo ? nameOf(chatTo) : '', got:0, total: chatTo ? 1 : peersOnCh().length, paths});
+  i.value = ''; i.focus(); $('#composer').classList.remove('typing');
 }
+$('#inp').addEventListener('input', () => $('#composer').classList.toggle('typing', !!$('#inp').value.trim()));
 $('#send').onclick = send;
 $('#attBtn').onclick = () => openSheet(`<div class="opt" data-c="1">📸 Slikaj kamerom</div><div class="opt" data-c="0">🖼️ Iz galerije</div>`,
-  el => A.pickImage(el.dataset.c === '1', chatTo));
+  el => A.pickImage(el.dataset.c === '1', chatTo.startsWith('o:') ? '' : chatTo));
 let recOn = false, recStart = 0, recIv = 0, recX = 0, recCancel = false;
 const recBtn = $('#recBtn');
 recBtn.addEventListener('pointerdown', e => {
@@ -712,7 +801,10 @@ function recEnd(){
   let r = {}; try { r = JSON.parse(A.stopNote(recCancel, chatTo)); } catch(e){}
   if (recCancel) { toast('🗑️ Snimak obrisan'); return; }
   if (!r.mid) { toast('Prekratko – drži duže'); return; }
-  addMsg({mid:r.mid, mine:1, kind:'voice', url:r.url, dur:r.dur, ts:Date.now(), to:chatTo, toName: chatTo ? nameOf(chatTo) : '', got:0, total: chatTo ? 1 : peersOnCh().length});
+  let paths = '📶';
+  const dm = onlineDmFor(chatTo);
+  if ((!chatTo || dm) && r.b64 && onSend(dm ? {mid:r.mid, voice:r.b64, dur:r.dur, dmTo:dm} : {mid:r.mid, voice:r.b64, dur:r.dur})) paths += '🌍';
+  addMsg({mid:r.mid, mine:1, kind:'voice', url:r.url, dur:r.dur, ts:Date.now(), to:chatTo, toName: chatTo ? nameOf(chatTo) : '', got:0, total: chatTo ? 1 : peersOnCh().length, paths});
 }
 ['pointerup','pointercancel','pointerleave'].forEach(ev => recBtn.addEventListener(ev, recEnd));
 $('#inp').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
@@ -731,7 +823,8 @@ function bars(rtt, age){
 }
 function renderPeers(){
   const cnt = peers.length;
-  $('#hdrCnt').textContent = cnt;
+  $('#hdrCnt').textContent = cnt + (typeof onPeople !== 'undefined' ? onPeople.length : 0);
+  if (typeof renderOnline === 'function') { renderOnline(); updChatHead(); }
   $('#radCnt').textContent = cnt;
   $('#hdrDot').className = 'dot' + (cnt ? ' on' : '');
   const db = $('#devBadge'); db.textContent = cnt; db.style.display = cnt ? 'flex' : 'none';
@@ -803,13 +896,13 @@ $('#wifiBtn').onclick = () => A.openWifi();
 
 /* ---------- postavke ---------- */
 $('#nameInp').value = st.name || '';
-$('#nameInp').addEventListener('change', e => { A.setName(e.target.value); st.name = e.target.value.trim(); toast('✓ Nadimak spremljen'); });
+$('#nameInp').addEventListener('change', e => { A.setName(e.target.value); st.name = e.target.value.trim(); toast('✓ Nadimak spremljen'); if (onFrame) onJoin(); });
 $('#gain').value = st.gain || 1.5; $('#gainV').textContent = (+$('#gain').value).toFixed(1) + '×';
 $('#gain').oninput = e => { $('#gainV').textContent = (+e.target.value).toFixed(1) + '×'; };
 $('#gain').onchange = e => A.setGain(+e.target.value);
 $$('.tg').forEach(t => {
   const k = t.dataset.k; t.classList.toggle('on', st[k] !== false);
-  t.onclick = () => { const v = !t.classList.contains('on'); t.classList.toggle('on', v); A.setOption(k, v); st[k] = v; };
+  t.onclick = () => { const v = !t.classList.contains('on'); t.classList.toggle('on', v); A.setOption(k, v); st[k] = v; if (window.onToggle) window.onToggle(k, v); };
 });
 $('#appSetBtn').onclick = () => A.openAppSettings();
 function permState(){ if (st.permsOk === false) { $('#nbErr').style.display='block'; $('#nbErr').textContent = 'Nedostaju dozvole (Bluetooth / uređaji u blizini). Dodirni „Dozvole”.'; } }
@@ -999,29 +1092,74 @@ function webCard(ips){
   $('#webCard').style.opacity = st.web === false ? .4 : 1;
 }
 
-/* ---------- online (internet) ---------- */
+/* ---------- online most (internet) – sve u istom chatu ---------- */
 const ONLINE_URL = 'https://basaofficial.github.io/bashtalk/';
-let onFrame = null, onUnread = 0;
-function onBadge(){ const b = $('#onBadge'); b.textContent = onUnread; b.style.display = onUnread ? 'flex' : 'none'; }
-function loadOnline(){
-  if (onFrame) return;
-  const online = A.isOnline ? A.isOnline() : navigator.onLine;
-  if (!online) { toast('📵 Nema interneta – online chat radi kad se pojavi mreža'); return; }
-  $('#onOff').style.display = 'none';
+let onFrame = null, onOk = false, onPeople = [], onRoom = '', onPriv = false;
+function onCfg(){ return st.ogroup ? {room: st.ogroup, pass: st.opass || ''} : {room: 'kanal-' + st.ch, pass: ''}; }
+function onPost(o){ try { if (onFrame && onFrame.contentWindow) onFrame.contentWindow.postMessage(Object.assign({net: A.netType ? A.netType() : ''}, o), '*'); } catch(e){} }
+function onJoin(){ const c = onCfg(); onPost({cmd:'join', room:c.room, pass:c.pass, name: st.name || ''}); }
+function onSend(m){ if (!onOk) return false; onPost({cmd:'send', m}); return true; }
+function onStart(){
+  if (st.online === false || onFrame) return;
+  let net = true; try { net = A.isOnline ? A.isOnline() : navigator.onLine; } catch(e){}
+  if (!net) { updChatHead(); return; }
   onFrame = document.createElement('iframe');
-  onFrame.allow = 'microphone; autoplay';
-  onFrame.src = ONLINE_URL + '#app=1&id=' + encodeURIComponent('a' + (st.id || '')) + '&name=' + encodeURIComponent(st.name || '');
-  $('#online').appendChild(onFrame);
+  onFrame.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0';
+  onFrame.allow = 'autoplay';
+  onFrame.src = ONLINE_URL + '#app=2&id=' + encodeURIComponent('a' + (st.id || '')) + '&name=' + encodeURIComponent(st.name || '');
+  document.body.appendChild(onFrame);
 }
-$('#onRetry').onclick = loadOnline;
+function onStop(){ if (onFrame) { onFrame.remove(); onFrame = null; } onOk = false; onPeople = []; try { A.setOnlineAudio(false); } catch(e){} updChatHead(); renderPeers(); }
+setTimeout(onStart, 1500);
+setInterval(() => { if (st.online !== false && !onFrame) onStart(); else if (onFrame) onPost({cmd:'net'}); }, 15000);
 window.addEventListener('message', e => {
   const d = e.data || {}; if (!d.bt) return;
-  if (d.type === 'msg') { if (view !== 'online') { onUnread++; onBadge(); toast('🌍 ' + d.name + ': ' + String(d.text || '').slice(0, 40)); } A.vib && A.vib(40); }
-  if (d.type === 'share' && A.share) A.share(d.text);
+  switch (d.type) {
+    case 'ready': onJoin(); break;
+    case 'net': onOk = !!d.on; try { A.setOnlineAudio(onOk); } catch(e){} updChatHead(); break;
+    case 'room': onRoom = d.room; onPriv = !!d.priv; updChatHead(); break;
+    case 'people': onPeople = d.list || []; renderPeers(); updChatHead(); break;
+    case 'msg': onMsg(d.m); break;
+    case 'audio': try { A.playOnline(d.b64, d.id, d.name); } catch(e){} break;
+    case 'share': if (A.share) A.share(d.text); break;
+  }
 });
-$('#nameInp').addEventListener('change', () => { if (onFrame) onFrame.contentWindow.postMessage({btName: $('#nameInp').value.trim()}, '*'); });
-// učitaj u pozadini čim ima interneta, da poruke stižu dok je aplikacija otvorena
-setTimeout(() => { try { if (A.isOnline && A.isOnline()) loadOnline(); } catch(e){} }, 2500);
+function onMsg(m){
+  if (!m || !m.mid || msgs.some(x => x.mid === m.mid)) return;
+  const x = {mid:m.mid, name:m.name, from:m.id, ts:m.ts || Date.now(), src:'on', net:m.net, gw:m.gw, to: m.dm ? (st.id || 'me') : ''};
+  if (m.img) { x.kind = 'img'; x.url = A.saveOnlineMedia('img', m.img.slice(m.img.indexOf(',') + 1)); }
+  else if (m.voice) { x.kind = 'voice'; x.url = A.saveOnlineMedia('voice', m.voice); x.dur = m.dur; }
+  else x.text = m.text || '';
+  if (addMsg(x)) notifyNew((m.dm ? '🔒 ' : '🌍 ') + m.name + ': ' + (x.text || (x.kind === 'img' ? '📷 slika' : '🎤 glasovna')).slice(0, 40));
+  if (st.gw !== false && !m.dm && x.text && !m.gw) { try { A.injectOnline(JSON.stringify(m)); } catch(e){} }
+}
+function notifyNew(t){ if (view !== 'chat') { unread++; badge(); toast(t); } A.vib && A.vib(40); }
+function updChatHead(){
+  const c = onCfg();
+  $('#chTitle').textContent = st.ogroup ? '🔒 ' + st.ogroup : 'Kanal ' + st.ch;
+  const off = peersOnCh().length;
+  $('#chSub').textContent = `📶 ${off} u blizini · ` + (st.online === false ? '🌍 online isključen' : onOk ? `🌍 ${onPeople.length} online` : '🌍 nema interneta');
+  $('#onDot').className = 'dot' + (onOk ? ' on' : '');
+  $('#onChipT').textContent = onOk ? (c.pass ? '🔒 ' : '# ') + c.room : 'offline';
+}
+$('#onChip').onclick = () => { show('sets'); setTimeout(() => $('#onSec').scrollIntoView({behavior:'smooth'}), 50); };
+$('#ogIn').value = st.ogroup || ''; $('#opIn').value = st.opass || '';
+$('#ogSave').onclick = () => {
+  st.ogroup = $('#ogIn').value.trim().toLowerCase().replace(/\s+/g, '-'); st.opass = $('#opIn').value;
+  A.setStr('ogroup', st.ogroup); A.setStr('opass', st.opass);
+  onJoin(); updChatHead(); toast(st.ogroup ? '🔒 Grupa spremljena' : '🌍 Javni kanal');
+};
+window.onToggle = (k, v) => { if (k === 'online') { v ? onStart() : onStop(); } };
+function renderOnline(){
+  const L = $('#onList'); if (!L) return;
+  if (st.online === false) { L.innerHTML = '<div class="card hint" style="text-align:left">Online je isključen u Postavkama.</div>'; return; }
+  if (!onOk) { L.innerHTML = '<div class="card hint" style="text-align:left">📵 Nema interneta – kad se pojavi, ovdje vidiš ko je online.</div>'; return; }
+  if (!onPeople.length) { L.innerHTML = '<div class="card hint" style="text-align:left">Niko drugi nije online u grupi <b style="color:var(--g)">' + esc(onRoom) + '</b>.</div>'; return; }
+  L.innerHTML = onPeople.map(p => `<div class="onrow"><div class="av">${esc(initials(p.name))}<span class="dot on"></span></div>
+    <div class="pi"><b>${esc(p.name)}</b><span>online · ${esc(p.net || (p.web ? 'web' : '—'))}</span></div>
+    <button class="btn sq" data-odm="${esc(p.id)}">💬</button></div>`).join('');
+  $$('#onList [data-odm]').forEach(b => b.onclick = () => { setChatTo('o:' + b.dataset.odm); show('chat'); });
+}
 
 /* ---------- eventi iz Androida ---------- */
 window.onEvent = function(t, d){
@@ -1047,16 +1185,19 @@ window.onEvent = function(t, d){
       sysMsg(d.name + ' je izašao iz dometa');
       peers = peers.filter(p => p.id !== d.id); renderPeers();
       break;
-    case 'msg':
-      addMsg({mid:d.mid, name:d.name, from:d.id, text:d.text, ts:d.ts || Date.now(), to:d.to || ''});
-      if (view !== 'chat') { unread++; badge(); toast('💬 ' + d.name + ': ' + d.text.slice(0, 40)); }
+    case 'msg': {
+      const ok = addMsg({mid:d.mid, name:d.name, from:d.id, text:d.text, ts:d.ts || Date.now(), to:d.to || '', src:'off', via:d.via});
+      if (ok) notifyNew('💬 ' + d.name + ': ' + d.text.slice(0, 40));
+      if (ok && onOk && st.gw !== false && !d.to && d.on !== 1) onSend({mid:d.mid, id:'a' + d.id, name:d.name, text:d.text, ts:d.ts || Date.now(), gw: st.name || 'most'});
       break;
+    }
     case 'delivered': {
       const m = msgs.find(x => x.mid === d.mid);
-      if (m) { m.got = d.got; m.total = d.total; saveMsgs(); const el = document.getElementById('m_' + d.mid); if (el) el.outerHTML = msgHtml(m); }
+      if (m) { m.got = d.got; m.total = d.total; saveMsgs(); const el = document.getElementById('tk_' + d.mid); if (el) el.textContent = tick(m); }
       break;
     }
     case 'tx': setTx(d.on); break;
+    case 'otx': onPost({cmd:'audio', b64:d.b64}); break;
     case 'level': {
       const s = 1 + d.v * .25;
       $('#ring').style.transform = `scale(${s})`;
@@ -1079,11 +1220,16 @@ window.onEvent = function(t, d){
     case 'nearby': nbState(d.state, d.msg, 0); break;
     case 'update': onUpdate(d); break;
     case 'media':
-      addMsg({mid:d.mid, name:d.name, from:d.id, kind:d.kind, url:d.url, dur:(d.meta||{}).dur, ts:d.ts || Date.now(), to:d.to || ''});
-      if (view !== 'chat') { unread++; badge(); toast((d.kind === 'img' ? '📷 ' : '🎤 ') + d.name); }
+      if (addMsg({mid:d.mid, name:d.name, from:d.id, kind:d.kind, url:d.url, dur:(d.meta||{}).dur, ts:d.ts || Date.now(), to:d.to || '', src:'off', via:d.via}))
+        notifyNew((d.kind === 'img' ? '📷 ' : '🎤 ') + d.name);
       break;
     case 'ownMedia':
-      addMsg({mid:d.mid, mine:1, kind:d.kind, url:d.url, ts:Date.now(), to:d.to||'', toName: d.to ? nameOf(d.to) : '', got:0, total: d.to ? 1 : peersOnCh().length});
+      {
+        let paths = '📶';
+        const dm = onlineDmFor(d.to || chatTo);
+        if ((!d.to || dm) && d.b64 && onSend(dm ? {mid:d.mid, img:'data:image/jpeg;base64,' + d.b64, dmTo:dm} : {mid:d.mid, img:'data:image/jpeg;base64,' + d.b64})) paths += '🌍';
+        addMsg({mid:d.mid, mine:1, kind:d.kind, url:d.url, ts:Date.now(), to:d.to||'', toName: d.to ? nameOf(d.to) : '', got:0, total: d.to ? 1 : peersOnCh().length, paths});
+      }
       break;
     case 'sos': showSos(d); sysMsg('🆘 SOS od ' + d.name + (d.reason ? ' – ' + d.reason : ''), 0); break;
     case 'sosOff':
@@ -1139,7 +1285,7 @@ function makeDemo(){
     sendChat(t){ const mid = 'd'+Date.now(); setTimeout(()=>emit('delivered',{mid,got:1,total:2}),300); setTimeout(()=>emit('delivered',{mid,got:2,total:2}),700); return mid; },
     startTalk(){ emit('tx',{on:true}); this._iv = setInterval(()=>emit('level',{v:Math.random()}),100); },
     stopTalk(){ clearInterval(this._iv); emit('tx',{on:false}); },
-    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, isOnline(){ return false; }, share(){}, pickImage(){}, startNote(){return true;}, stopNote(){return JSON.stringify({mid:'v'+Date.now(),url:'',dur:3.2});},
+    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, isOnline(){ return false; }, share(){}, netType(){ return '5G'; }, playOnline(){}, injectOnline(){}, saveOnlineMedia(){ return ''; }, setOnlineAudio(){}, setStr(){}, pickImage(){}, startNote(){return true;}, stopNote(){return JSON.stringify({mid:'v'+Date.now(),url:'',dur:3.2});},
     sos(on){ emit('mySos',{on}); }, sosAck(){}, muteSiren(){}, sosList(){return '[]';}, fallOk(){ emit('fall',{left:-1}); }, getHistory(){ return JSON.stringify({list:[{name:'Mirza',ts:Date.now()-60000,dur:4.2,url:''}]}); },
     getTasks(){ return JSON.stringify({list:[{tid:'t1',text:'Montirati FI u ormaru -1',by:'Mirza',who:'Basa',done:false,created:1},{tid:'t2',text:'Kabel NYM 5x2.5 do garaže',by:'Basa',done:true,editBy:'Kemo',created:2}]}); }, saveTask(){}, setFloor(){return true;}, clearFloor(){}, setUpdMode(){}, snoozeUpdate(){}, openUrl(){}, allowInstalls(){},
     checkUpdate(){ emit('update',{state:'available',tag:'v5',size:2100000,notes:'v2.1: auto-ažuriranja i Instagram kontakt'}); },

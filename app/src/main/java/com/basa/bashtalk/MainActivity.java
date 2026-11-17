@@ -29,6 +29,12 @@ import android.webkit.WebView;
 
 import androidx.core.content.FileProvider;
 
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.telephony.TelephonyDisplayInfo;
+import android.telephony.TelephonyManager;
+
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -47,6 +53,7 @@ public class MainActivity extends Activity implements Engine.Listener {
     private final Handler main = new Handler(Looper.getMainLooper());
     static volatile boolean visible;
     private File camFile;
+    static volatile String cellGen = "";
     private String pickTo = "";
 
     @Override
@@ -88,6 +95,7 @@ public class MainActivity extends Activity implements Engine.Listener {
         requestNeeded();
         startEngine();
         handleIntent(getIntent());
+        watchCellGen();
     }
 
     @Override
@@ -145,6 +153,53 @@ public class MainActivity extends Activity implements Engine.Listener {
         }
     }
 
+    // ------------------------------------------------------------ vrsta mreže (4G/5G/Wi-Fi)
+
+    private void watchCellGen() {
+        if (Build.VERSION.SDK_INT < 31) return;
+        try {
+            TelephonyManager tm = getSystemService(TelephonyManager.class);
+            tm.registerTelephonyCallback(getMainExecutor(), new GenCallback());
+        } catch (Throwable ignored) { }
+    }
+
+    @android.annotation.TargetApi(31)
+    static class GenCallback extends android.telephony.TelephonyCallback implements android.telephony.TelephonyCallback.DisplayInfoListener {
+        @Override
+        public void onDisplayInfoChanged(TelephonyDisplayInfo d) {
+            int o = d.getOverrideNetworkType(), t = d.getNetworkType();
+            if (t == TelephonyManager.NETWORK_TYPE_NR || o == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_NSA
+                    || o == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_NR_ADVANCED) cellGen = "5G";
+            else if (t == TelephonyManager.NETWORK_TYPE_LTE || o == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_CA
+                    || o == TelephonyDisplayInfo.OVERRIDE_NETWORK_TYPE_LTE_ADVANCED_PRO) cellGen = "4G";
+            else if (t == TelephonyManager.NETWORK_TYPE_UNKNOWN) cellGen = "";
+            else cellGen = "3G";
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    String netType() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            Network n = cm.getActiveNetwork();
+            NetworkCapabilities nc = n == null ? null : cm.getNetworkCapabilities(n);
+            if (nc == null) return "";
+            if (nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return "Wi-Fi";
+            if (nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) return "LAN";
+            if (nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                if (!cellGen.isEmpty()) return cellGen;
+                if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                    int t = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDataNetworkType();
+                    if (t == TelephonyManager.NETWORK_TYPE_NR) return "5G";
+                    if (t == TelephonyManager.NETWORK_TYPE_LTE) return "4G";
+                    return "3G";
+                }
+                return "mobilni";
+            }
+        } catch (Exception ignored) { }
+        return "";
+    }
+
     // ------------------------------------------------------------ dozvole
 
     private String[] neededPerms() {
@@ -156,6 +211,7 @@ public class MainActivity extends Activity implements Engine.Listener {
             l.add(Manifest.permission.BLUETOOTH_CONNECT);
             if (UwbLink.hasHardware(this)) l.add(Manifest.permission.UWB_RANGING);
         }
+        l.add(Manifest.permission.READ_PHONE_STATE);
         if (Build.VERSION.SDK_INT >= 33) {
             l.add(Manifest.permission.NEARBY_WIFI_DEVICES);
             l.add(Manifest.permission.POST_NOTIFICATIONS);
@@ -184,6 +240,7 @@ public class MainActivity extends Activity implements Engine.Listener {
         if (e != null && e.auto) e.startNearby();
         if (e != null && e.wfdEnabled) e.startWfd();
         if (prefs.getBoolean("bg", false)) startEngine();
+        watchCellGen();
     }
 
     // ------------------------------------------------------------ slike
@@ -230,6 +287,7 @@ public class MainActivity extends Activity implements Engine.Listener {
                 JSONObject r = e.sendBlob("img", jpg, meta, to, e.myId, e.name);
                 r.put("kind", "img");
                 r.put("to", to);
+                r.put("b64", android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP));
                 onEvent("ownMedia", r);
                 if (camFile != null) camFile.delete();
             } catch (Exception ex) {
@@ -361,6 +419,10 @@ public class MainActivity extends Activity implements Engine.Listener {
                 o.put("wfdPass", WifiDirectLink.PASS);
                 o.put("webPort", WebServer.PORT);
                 o.put("sos", e != null && e.isSos());
+                o.put("ogroup", prefs.getString("ogroup", ""));
+                o.put("opass", prefs.getString("opass", ""));
+                o.put("online", prefs.getBoolean("online", true));
+                o.put("gw", prefs.getBoolean("gw", true));
                 return o.toString();
             } catch (Exception ex) {
                 return "{}";
@@ -553,6 +615,39 @@ public class MainActivity extends Activity implements Engine.Listener {
                 if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
             } catch (Exception ignored) { }
         }
+
+        @JavascriptInterface
+        public String netType() { return MainActivity.this.netType(); }
+
+        @JavascriptInterface
+        public void playOnline(String b64, String id, String name) {
+            Engine e = TalkService.eng();
+            if (e == null) return;
+            try { e.playExternal(android.util.Base64.decode(b64, android.util.Base64.DEFAULT), id, name); } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
+        public void injectOnline(String json) {
+            Engine e = TalkService.eng();
+            if (e == null) return;
+            try { e.injectOnline(new JSONObject(json)); } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
+        public String saveOnlineMedia(String kind, String b64) {
+            Engine e = TalkService.eng();
+            if (e == null) return "";
+            try { return e.saveOnlineMedia(kind, android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); } catch (Exception ex) { return ""; }
+        }
+
+        @JavascriptInterface
+        public void setOnlineAudio(boolean on) {
+            Engine e = TalkService.eng();
+            if (e != null) e.onlineAudio = on;
+        }
+
+        @JavascriptInterface
+        public void setStr(String k, String v) { prefs.edit().putString(k, v == null ? "" : v).apply(); }
 
         @JavascriptInterface
         public boolean isOnline() { return Updater.online(MainActivity.this); }

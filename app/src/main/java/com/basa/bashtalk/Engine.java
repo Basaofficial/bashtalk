@@ -143,6 +143,9 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
     volatile float pressure = Float.NaN;
     volatile int floor = Integer.MIN_VALUE;
     volatile WebSink web;
+    volatile boolean onlineAudio;
+    private final Map<Long, String> onlineNames = new ConcurrentHashMap<>();
+    private final Map<Long, Integer> onlineSeq = new ConcurrentHashMap<>();
 
     private DatagramSocket ctrlSock, audioSock;
     private volatile boolean running;
@@ -715,6 +718,14 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
                 String mid = o.optString("mid");
                 String to = o.optString("to", "");
                 relay(o, neighbor);
+                o.put("via", viaLabel(o, from, relayed, neighbor));
+                if (o.optInt("on") == 1) {
+                    if (!seenMsgs.containsKey(mid) && (to.isEmpty() ? o.optInt("ch", 1) == channel : isMine(to))) {
+                        seenMsgs.put(mid, true);
+                        deliverMsg(o, to);
+                    }
+                    break;
+                }
                 boolean forMe = to.isEmpty() ? o.optInt("ch", 1) == channel : isMine(to);
                 if (!forMe) break;
                 sendAck(mid, origin, to.isEmpty() ? myId : to);
@@ -794,6 +805,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
             case "bmeta": {
                 if (!relayed) touch(o, from, ep);
                 relay(o, neighbor);
+                o.put("via", viaLabel(o, from, relayed, neighbor));
                 onBlobMeta(o);
                 break;
             }
@@ -812,6 +824,70 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
                 else u.onAddr(origin, o.toString());
                 break;
             }
+        }
+    }
+
+    private String viaLabel(JSONObject o, InetAddress from, boolean relayed, String neighbor) {
+        Peer nb = peers.get(neighbor);
+        if (o.optInt("on") == 1) return "online→offline" + (nb != null ? " · " + nb.name : "");
+        if (relayed) return "mesh" + (nb != null ? " · " + nb.name : "");
+        if (from != null) return from.getHostAddress().startsWith("192.168.49.") ? "Wi-Fi Direct" : "Wi-Fi";
+        return "Bluetooth";
+    }
+
+    /** Poruka koja je stigla preko interneta → proslijedi je ljudima offline (most). */
+    public void injectOnline(final JSONObject m) {
+        exec(() -> {
+            String mid = m.optString("mid");
+            if (mid.isEmpty() || seenMsgs.containsKey(mid) || m.has("img") || m.has("voice")) return;
+            seenMsgs.put(mid, true);
+            JSONObject o = new JSONObject();
+            o.put("t", "msg");
+            o.put("id", m.optString("id"));
+            o.put("name", m.optString("name"));
+            o.put("ch", channel);
+            o.put("mid", mid);
+            o.put("text", m.optString("text"));
+            o.put("ts", m.optLong("ts", System.currentTimeMillis()));
+            o.put("on", 1);
+            o.put("fw", myId);
+            o.put("ttl", MESH_TTL);
+            for (int i = 0; i < 2; i++) {
+                o.put("att", rnd.nextInt(1 << 30));
+                flood(o, null);
+            }
+        });
+    }
+
+    /** Glas koji je stigao preko interneta → pusti ga ovdje (i u historiju). */
+    public void playExternal(byte[] ulaw, String id, String name) {
+        long h = id.hashCode();
+        onlineNames.put(h, name + " 🌍");
+        int seq = onlineSeq.containsKey(h) ? onlineSeq.get(h) : 0;
+        for (int off = 0; off < ulaw.length; off += SAMPLES) {
+            int n = Math.min(SAMPLES, ulaw.length - off);
+            byte[] pk = new byte[HEADER + n];
+            pk[0] = 'B';
+            pk[1] = '2';
+            pk[2] = (byte) channel;
+            pk[3] = 0;
+            for (int i = 0; i < 8; i++) pk[4 + i] = (byte) (h >>> (56 - 8 * i));
+            pk[12] = (byte) (seq >> 8);
+            pk[13] = (byte) seq;
+            seq = (seq + 1) & 0xffff;
+            System.arraycopy(ulaw, off, pk, HEADER, n);
+            audioQ.offer(pk);
+        }
+        onlineSeq.put(h, seq);
+    }
+
+    /** Medij koji je stigao preko interneta: spremi u fajl, vrati url. */
+    public String saveOnlineMedia(String kind, byte[] data) {
+        try {
+            File f = saveMedia(Media.hex(rnd.nextLong()), kind, data, 0, data.length);
+            return Media.url(f);
+        } catch (Exception e) {
+            return "";
         }
     }
 
@@ -1202,6 +1278,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
         ev.put("ts", meta.optLong("ts", System.currentTimeMillis()));
         ev.put("to", meta.optString("to", ""));
         ev.put("meta", meta.optJSONObject("meta"));
+        ev.put("via", meta.optString("via", ""));
         return ev;
     }
 
@@ -1494,6 +1571,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
             pkt[1] = '2';
             for (int i = 0; i < 8; i++) pkt[4 + i] = (byte) (myHash >>> (56 - 8 * i));
             int seq = 0, frames = 0;
+            ByteArrayOutputStream onBuf = new ByteArrayOutputStream();
 
             while (talking && running) {
                 int n = rec.read(pcm, 0, SAMPLES);
@@ -1518,6 +1596,15 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
 
                 WebSink w = web;
                 if (w != null && tgt == null) w.webAudio(out, HEADER, n);
+                if (onlineAudio && tgt == null) {
+                    onBuf.write(out, HEADER, n);
+                    if (onBuf.size() >= 1600) {
+                        JSONObject ox = new JSONObject();
+                        ox.put("b64", android.util.Base64.encodeToString(onBuf.toByteArray(), android.util.Base64.NO_WRAP));
+                        emit("otx", ox);
+                        onBuf.reset();
+                    }
+                }
 
                 int sent = 0;
                 if (tgt != null) {
@@ -1617,6 +1704,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
             meta.put("dur", Math.round(data.length / 800.0) / 10.0);
             JSONObject r = sendBlob("voice", data, meta, to, myId, name);
             r.put("dur", meta.optDouble("dur"));
+            r.put("b64", android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP));
             return r;
         } catch (Exception e) {
             return new JSONObject();
@@ -1707,6 +1795,8 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
     private String[] whoByHash(long h) {
         for (Peer p : peers.values()) if (p.hash == h) return new String[]{p.id, p.name};
         for (Remote r : remotes.values()) if ((long) r.id.hashCode() == h) return new String[]{r.id, r.name};
+        String on = onlineNames.get(h);
+        if (on != null) return new String[]{"", on};
         return new String[]{"", "?"};
     }
 

@@ -30,11 +30,18 @@ jobs:
           name: BashTalk
           path: BashTalk.apk
 
+      - name: Notes
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          T=$(printf '%s\n' "$MSG" | head -n1 | sed -E 's/^v[0-9.]+: *//')
+          printf '🆕 Nova verzija – %s\n' "${T:-poboljšanja}" > notes.txt
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: "#Bash Talk v${{ github.run_number }}"
           files: BashTalk.apk
-          body: ${{ github.event.head_commit.message }}
+          body_path: notes.txt
           make_latest: true
