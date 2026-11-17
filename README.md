@@ -10,9 +10,11 @@ Offline walkie-talkie i chat za Android. Radi preko Wi-Fija ili hotspota, bez in
 - 📳 „Zovni” vibrira telefon druge osobe
 
 ## Kako spojiti
-1. Na jednom telefonu upali hotspot (mobilni podaci ne trebaju)
-2. Ostali se spoje na njega preko Wi-Fija
-3. Svi otvore #Bash Talk
+- **Automatski (v2):** Bluetooth i Wi-Fi uključeni, otvori #Bash Talk – telefoni u blizini se sami pronađu i spoje (Google Nearby, bez hotspota i interneta).
+- **Hotspot:** jedan telefon upali hotspot, ostali se spoje – veći domet.
+
+## Pozadina
+U Postavkama uključi „Radi u pozadini” – radi i kad je ekran ugašen, a „Pričaj / Stop / Isključi” su u obavještenju.
 
 ## Build
 GitHub Actions automatski pravi `BashTalk.apk` na svaki push na `main`.

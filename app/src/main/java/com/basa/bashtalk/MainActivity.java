@@ -2,7 +2,6 @@ package com.basa.bashtalk;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +10,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
@@ -21,37 +22,25 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends Activity implements Engine.Listener {
 
     private WebView web;
-    private Engine engine;
     private SharedPreferences prefs;
-    private volatile boolean ready;
-    private boolean volPtt = true;
-    private String pttTarget = "";
+    private volatile boolean ready, started;
+    private final Handler main = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         getWindow().setStatusBarColor(Color.BLACK);
         getWindow().setNavigationBarColor(Color.BLACK);
-
         prefs = getSharedPreferences("bashtalk", MODE_PRIVATE);
-        String id = prefs.getString("id", null);
-        if (id == null) {
-            id = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-            prefs.edit().putString("id", id).apply();
-        }
-        String name = prefs.getString("name", Build.MODEL);
-        engine = new Engine(this, id, name, this);
-        engine.channel = prefs.getInt("ch", 1);
-        engine.gain = prefs.getFloat("gain", 1.5f);
-        engine.sounds = prefs.getBoolean("sounds", true);
-        volPtt = prefs.getBoolean("volPtt", true);
         applyKeepScreen(prefs.getBoolean("keepOn", true));
 
         web = new WebView(this);
@@ -66,37 +55,98 @@ public class MainActivity extends Activity implements Engine.Listener {
         web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
 
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
-        }
-        engine.start();
+        requestNeeded();
+        startEngine();
     }
 
     @Override
-    protected void onDestroy() {
-        engine.stop();
-        super.onDestroy();
+    protected void onStart() {
+        super.onStart();
+        started = true;
+        if (TalkService.inst == null) startEngine();
+        if (ready) TalkService.attach(this);
     }
+
+    @Override
+    protected void onStop() {
+        started = false;
+        TalkService.detach(this);
+        if (!prefs.getBoolean("bg", false) && !isChangingConfigurations()) {
+            stopService(new Intent(this, TalkService.class));
+        }
+        super.onStop();
+    }
+
+    private void startEngine() {
+        Intent i = new Intent(this, TalkService.class);
+        if (prefs.getBoolean("bg", false)) {
+            i.setAction(TalkService.ACTION_FG);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+        } else {
+            startService(i);
+        }
+    }
+
+    // ------------------------------------------------------------ dozvole
+
+    private String[] neededPerms() {
+        List<String> l = new ArrayList<>();
+        l.add(Manifest.permission.RECORD_AUDIO);
+        if (Build.VERSION.SDK_INT >= 31) {
+            l.add(Manifest.permission.BLUETOOTH_SCAN);
+            l.add(Manifest.permission.BLUETOOTH_ADVERTISE);
+            l.add(Manifest.permission.BLUETOOTH_CONNECT);
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            l.add(Manifest.permission.NEARBY_WIFI_DEVICES);
+            l.add(Manifest.permission.POST_NOTIFICATIONS);
+        } else {
+            l.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            l.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+        return l.toArray(new String[0]);
+    }
+
+    private boolean allGranted() {
+        for (String p : neededPerms()) if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) return false;
+        return true;
+    }
+
+    private void requestNeeded() {
+        List<String> miss = new ArrayList<>();
+        for (String p : neededPerms()) if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) miss.add(p);
+        if (!miss.isEmpty()) requestPermissions(miss.toArray(new String[0]), 1);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        Engine e = TalkService.eng();
+        if (e != null && e.auto) e.startNearby();     // ponovo pokreni nakon dozvola
+        if (prefs.getBoolean("bg", false)) startEngine();  // osvježi tip foreground usluge (mikrofon)
+    }
+
+    // ------------------------------------------------------------ tipke / back
 
     @Override
     public void onBackPressed() {
         web.evaluateJavascript("window.onBack && window.onBack()", v -> {
-            if (!"true".equals(v)) moveTaskToBack(true);   // ostaje aktivan u pozadini
+            if (!"true".equals(v)) moveTaskToBack(true);
         });
     }
 
-    // Tipka za smanjenje glasnoće = pričaj (drži)
     @Override
-    public boolean dispatchKeyEvent(KeyEvent e) {
-        if (volPtt && e.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
-            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
-                engine.startTalk(pttTarget);
-            } else if (e.getAction() == KeyEvent.ACTION_UP) {
-                engine.stopTalk();
+    public boolean dispatchKeyEvent(KeyEvent ev) {
+        Engine e = TalkService.eng();
+        if (e != null && prefs.getBoolean("volPtt", true) && ev.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (ev.getAction() == KeyEvent.ACTION_DOWN && ev.getRepeatCount() == 0) {
+                e.startTalk(prefs.getString("pttTarget", ""));
+            } else if (ev.getAction() == KeyEvent.ACTION_UP) {
+                e.stopTalk();
             }
             return true;
         }
-        return super.dispatchKeyEvent(e);
+        return super.dispatchKeyEvent(ev);
     }
 
     private void applyKeepScreen(boolean on) {
@@ -106,55 +156,47 @@ public class MainActivity extends Activity implements Engine.Listener {
         });
     }
 
-    private void vibrate(long ms) {
-        try {
-            Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-            if (v == null) return;
-            if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
-            else v.vibrate(ms);
-        } catch (Exception ignored) { }
-    }
+    // ------------------------------------------------------------ događaji → JS
 
     @Override
     public void onEvent(String type, JSONObject data) {
-        if ("buzz".equals(type)) {
-            try {
-                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                if (v != null && Build.VERSION.SDK_INT >= 26)
-                    v.vibrate(VibrationEffect.createWaveform(new long[]{0, 300, 150, 300, 150, 600}, -1));
-                else vibrate(1000);
-            } catch (Exception ignored) { }
-        }
-        if (("msg".equals(type) || "join".equals(type)) && prefs.getBoolean("vib", true)) {
-            vibrate("msg".equals(type) ? 60 : 30);
+        if ("stopped".equals(type)) {
+            runOnUiThread(this::finishAndRemoveTask);
+            return;
         }
         if (!ready) return;
         final String js = "window.onEvent && window.onEvent(" + JSONObject.quote(type) + "," + data.toString() + ")";
-        runOnUiThread(() -> web.evaluateJavascript(js, null));
+        main.post(() -> web.evaluateJavascript(js, null));
     }
 
     // ------------------------------------------------------------ JS bridge
 
     class Bridge {
         @JavascriptInterface
-        public void ready() { ready = true; }
+        public void ready() {
+            ready = true;
+            main.post(() -> { if (started) TalkService.attach(MainActivity.this); });
+        }
 
         @JavascriptInterface
         public String getState() {
             try {
+                Engine e = TalkService.eng();
                 JSONObject o = new JSONObject();
-                o.put("id", engine.myId);
-                o.put("name", engine.name);
-                o.put("ch", engine.channel);
-                o.put("gain", engine.gain);
-                o.put("sounds", engine.sounds);
+                o.put("name", e != null ? e.name : prefs.getString("name", Build.MODEL));
+                o.put("ch", prefs.getInt("ch", 1));
+                o.put("gain", prefs.getFloat("gain", 1.5f));
+                o.put("sounds", prefs.getBoolean("sounds", true));
                 o.put("keepOn", prefs.getBoolean("keepOn", true));
-                o.put("volPtt", volPtt);
+                o.put("volPtt", prefs.getBoolean("volPtt", true));
                 o.put("vib", prefs.getBoolean("vib", true));
+                o.put("auto", prefs.getBoolean("auto", true));
+                o.put("bg", prefs.getBoolean("bg", false));
                 o.put("ips", Engine.localIps());
                 o.put("micOk", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
+                o.put("permsOk", allGranted());
                 return o.toString();
-            } catch (Exception e) {
+            } catch (Exception ex) {
                 return "{}";
             }
         }
@@ -164,60 +206,98 @@ public class MainActivity extends Activity implements Engine.Listener {
             n = n == null ? "" : n.trim();
             if (n.isEmpty()) n = Build.MODEL;
             if (n.length() > 24) n = n.substring(0, 24);
-            engine.name = n;
             prefs.edit().putString("name", n).apply();
+            Engine e = TalkService.eng();
+            if (e != null) {
+                e.name = n;
+                if (e.auto) e.startNearby();
+            }
         }
 
         @JavascriptInterface
         public void setChannel(int ch) {
             ch = Math.max(1, Math.min(99, ch));
-            engine.channel = ch;
             prefs.edit().putInt("ch", ch).apply();
+            Engine e = TalkService.eng();
+            if (e != null) e.channel = ch;
         }
 
         @JavascriptInterface
         public void setGain(float g) {
-            engine.gain = g;
             prefs.edit().putFloat("gain", g).apply();
+            Engine e = TalkService.eng();
+            if (e != null) e.gain = g;
         }
 
         @JavascriptInterface
         public void setOption(String key, boolean v) {
             prefs.edit().putBoolean(key, v).apply();
+            Engine e = TalkService.eng();
             switch (key) {
                 case "keepOn": applyKeepScreen(v); break;
-                case "volPtt": volPtt = v; break;
-                case "sounds": engine.sounds = v; break;
+                case "sounds": if (e != null) e.sounds = v; break;
+                case "auto": if (e != null) e.setAuto(v); break;
+                case "bg": {
+                    Intent i = new Intent(MainActivity.this, TalkService.class);
+                    if (v) {
+                        i.setAction(TalkService.ACTION_FG);
+                        if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+                    } else {
+                        i.setAction(TalkService.ACTION_BG);
+                        startService(i);
+                    }
+                    break;
+                }
             }
         }
 
         @JavascriptInterface
-        public String sendChat(String text, String to) { return engine.sendChat(text, to); }
+        public String sendChat(String text, String to) {
+            Engine e = TalkService.eng();
+            return e != null ? e.sendChat(text, to) : "";
+        }
 
         @JavascriptInterface
         public void startTalk(String target) {
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1));
+                main.post(MainActivity.this::requestNeeded);
                 return;
             }
-            engine.startTalk(target);
+            Engine e = TalkService.eng();
+            if (e != null) e.startTalk(target);
         }
 
         @JavascriptInterface
-        public void stopTalk() { engine.stopTalk(); }
+        public void stopTalk() {
+            Engine e = TalkService.eng();
+            if (e != null) e.stopTalk();
+        }
 
         @JavascriptInterface
-        public void setPttTarget(String t) { pttTarget = t == null ? "" : t; }
+        public void setPttTarget(String t) { prefs.edit().putString("pttTarget", t == null ? "" : t).apply(); }
 
         @JavascriptInterface
-        public void buzz(String id) { engine.buzz(id); }
+        public void buzz(String id) {
+            Engine e = TalkService.eng();
+            if (e != null) e.buzz(id);
+        }
 
         @JavascriptInterface
-        public void vib(int ms) { vibrate(ms); }
+        public void vib(int ms) {
+            try {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v == null) return;
+                if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
+                else v.vibrate(ms);
+            } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
+        public void askPerms() { main.post(MainActivity.this::requestNeeded); }
 
         @JavascriptInterface
         public void openHotspot() {
-            runOnUiThread(() -> {
+            main.post(() -> {
                 Intent i = new Intent(Intent.ACTION_MAIN);
                 i.setClassName("com.android.settings", "com.android.settings.TetherSettings");
                 try { startActivity(i); return; } catch (Exception ignored) { }
@@ -227,18 +307,38 @@ public class MainActivity extends Activity implements Engine.Listener {
 
         @JavascriptInterface
         public void openWifi() {
-            runOnUiThread(() -> {
-                try { startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS)); } catch (ActivityNotFoundException ignored) { }
-            });
+            main.post(() -> { try { startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS)); } catch (Exception ignored) { } });
+        }
+
+        @JavascriptInterface
+        public void openBluetooth() {
+            main.post(() -> { try { startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS)); } catch (Exception ignored) { } });
+        }
+
+        @JavascriptInterface
+        public void openLocation() {
+            main.post(() -> { try { startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)); } catch (Exception ignored) { } });
         }
 
         @JavascriptInterface
         public void openAppSettings() {
-            runOnUiThread(() -> {
+            main.post(() -> {
                 try {
                     startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                             Uri.parse("package:" + getPackageName())));
                 } catch (Exception ignored) { }
+            });
+        }
+
+        @JavascriptInterface
+        public void batteryOpt() {
+            main.post(() -> {
+                try {
+                    startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception ex) {
+                    try { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); } catch (Exception ignored) { }
+                }
             });
         }
     }

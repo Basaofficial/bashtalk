@@ -23,12 +23,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
-import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,13 +35,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Mrežni + audio motor: pronalazak uređaja (UDP broadcast), chat s potvrdom
- * prijema i walkie-talkie (PCM 16 kHz preko UDP-a). Radi na bilo kojoj
- * lokalnoj Wi-Fi mreži ili hotspotu, bez interneta.
+ * Mrežni + audio motor. Dva transporta istovremeno:
+ *  - Nearby (Bluetooth/BLE/Wi-Fi) – automatsko povezivanje bez ikakve mreže
+ *  - LAN (UDP) – kad su uređaji na istom Wi-Fiju ili hotspotu (brže)
+ * Glas: 16 kHz, G.711 µ-law (128 kbit/s), paketi po 20 ms.
  */
-public class Engine {
+public class Engine implements NearbyLink.Sink {
 
     public interface Listener {
         void onEvent(String type, JSONObject data);
@@ -51,14 +55,18 @@ public class Engine {
     static final int CTRL_PORT = 47100;
     static final int AUDIO_PORT = 47101;
     static final int RATE = 16000;
-    static final int FRAME = 640;          // 20 ms, 16-bit mono
+    static final int SAMPLES = 320;        // 20 ms
+    static final int FRAME = SAMPLES * 2;  // PCM16 bajtova
     static final int HEADER = 14;
-    static final long PEER_TIMEOUT = 6000;
+    static final long PEER_TIMEOUT = 7000;
+    static final long LAN_FRESH = 5000;
 
     static class Peer {
         String id, name;
         long hash;
         InetAddress addr;
+        long lastLan;
+        String ep;
         int ch;
         long lastSeen, joined;
         boolean talking;
@@ -68,9 +76,10 @@ public class Engine {
     static class Pending {
         JSONObject msg;
         Set<String> waiting;
-        int tries;
-        int total;
+        int tries, total;
     }
+
+    interface Job { void run() throws Exception; }
 
     private final Context ctx;
     private final Listener listener;
@@ -81,26 +90,54 @@ public class Engine {
     volatile int channel = 1;
     volatile float gain = 1.5f;
     volatile boolean sounds = true;
+    volatile boolean auto = true;
 
     private DatagramSocket ctrlSock, audioSock;
     private volatile boolean running;
     private WifiManager.MulticastLock mlock;
+    private volatile NearbyLink nearby;
+    private volatile String nearbyState = "off";
+    private volatile String nearbyMsg = "";
 
     final ConcurrentHashMap<String, Peer> peers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> epToId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Pending> pending = new ConcurrentHashMap<>();
     private final Map<String, Boolean> seenMsgs = Collections.synchronizedMap(
             new LinkedHashMap<String, Boolean>() {
                 @Override
-                protected boolean removeEldestEntry(Map.Entry<String, Boolean> e) {
-                    return size() > 600;
-                }
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> e) { return size() > 600; }
             });
 
+    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private final LinkedBlockingQueue<byte[]> audioQ = new LinkedBlockingQueue<>(200);
+
     private volatile boolean talking;
-    private volatile String talkTarget;   // null = svi na kanalu
-    private Thread talkThread;
+    private volatile String talkTarget;
     private volatile List<InetAddress> bcast = new ArrayList<>();
     private ToneGenerator tone;
+
+    private static final short[] ULAW_DEC = new short[256];
+    static {
+        for (int i = 0; i < 256; i++) {
+            int x = ~i & 0xff;
+            int sign = x & 0x80;
+            int exp = (x >> 4) & 7;
+            int man = x & 0x0f;
+            int s = (((man << 3) + 0x84) << exp) - 0x84;
+            ULAW_DEC[i] = (short) (sign != 0 ? -s : s);
+        }
+    }
+
+    static byte ulaw(int pcm) {
+        int sign = (pcm >> 8) & 0x80;
+        if (sign != 0) pcm = -pcm;
+        if (pcm > 32635) pcm = 32635;
+        pcm += 0x84;
+        int exp = 7;
+        for (int mask = 0x4000; (pcm & mask) == 0 && exp > 0; exp--, mask >>= 1) { }
+        int man = (pcm >> (exp + 3)) & 0x0f;
+        return (byte) ~(sign | (exp << 4) | man);
+    }
 
     public Engine(Context ctx, String id, String name, Listener l) {
         this.ctx = ctx.getApplicationContext();
@@ -123,9 +160,7 @@ public class Engine {
                 mlock.acquire();
             }
         } catch (Exception ignored) { }
-        try {
-            tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 70);
-        } catch (Exception ignored) { }
+        try { tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 70); } catch (Exception ignored) { }
 
         try {
             ctrlSock = new DatagramSocket(null);
@@ -137,33 +172,103 @@ public class Engine {
             audioSock.setReuseAddress(true);
             audioSock.setBroadcast(true);
             audioSock.bind(new InetSocketAddress(AUDIO_PORT));
-            audioSock.setSoTimeout(150);
+            new Thread(this::ctrlLoop, "ctrl-rx").start();
+            new Thread(this::udpAudioLoop, "udp-audio-rx").start();
         } catch (Exception e) {
-            emitError("Ne mogu otvoriti mrežni port: " + e.getMessage());
-            running = false;
-            return;
+            emitError("Wi-Fi port nije dostupan: " + e.getMessage());
         }
 
-        new Thread(this::ctrlLoop, "ctrl-rx").start();
-        new Thread(this::audioLoop, "audio-rx").start();
+        new Thread(this::playerLoop, "player").start();
         new Thread(this::tickLoop, "tick").start();
+        if (auto) startNearby();
     }
 
     public void stop() {
         if (!running) return;
-        try {
-            JSONObject bye = base("bye");
-            sendToAll(bye);
-        } catch (Exception ignored) { }
+        try { sendToAll(base("bye")); } catch (Exception ignored) { }
         running = false;
         talking = false;
-        try { ctrlSock.close(); } catch (Exception ignored) { }
-        try { audioSock.close(); } catch (Exception ignored) { }
+        stopNearby();
+        try { if (ctrlSock != null) ctrlSock.close(); } catch (Exception ignored) { }
+        try { if (audioSock != null) audioSock.close(); } catch (Exception ignored) { }
         try { if (mlock != null) mlock.release(); } catch (Exception ignored) { }
         try { if (tone != null) tone.release(); } catch (Exception ignored) { }
+        worker.shutdownNow();
+    }
+
+    public void startNearby() {
+        try {
+            if (nearby == null) nearby = new NearbyLink(ctx, myId, this);
+            nearby.start(name);
+        } catch (Throwable t) {
+            onState("error", "Google Play usluge nisu dostupne: " + t.getMessage());
+        }
+    }
+
+    public void stopNearby() {
+        try { if (nearby != null) nearby.stop(); } catch (Throwable ignored) { }
+    }
+
+    public void setAuto(boolean on) {
+        auto = on;
+        if (on) startNearby(); else stopNearby();
+    }
+
+    // ------------------------------------------------------------ NearbyLink.Sink
+
+    @Override
+    public void onBytes(String ep, byte[] b) {
+        if (b.length > HEADER && b[0] == 'B' && b[1] == '2') {
+            audioQ.offer(b);
+        } else if (b.length > 1 && b[0] == '{') {
+            final String s = new String(b, StandardCharsets.UTF_8);
+            exec(() -> {
+                JSONObject o = new JSONObject(s);
+                String id = o.optString("id");
+                if (!id.isEmpty() && !id.equals(myId)) handleCtrl(o, null, ep);
+            });
+        }
+    }
+
+    @Override
+    public void onConnected(String ep, String peerId) {
+        if (peerId != null) epToId.put(ep, peerId);
+        exec(() -> {
+            JSONObject h = base("hello");
+            h.put("talk", talking);
+            NearbyLink nl = nearby;
+            if (nl != null) nl.send(ep, bytes(h));
+        });
+    }
+
+    @Override
+    public void onDisconnected(String ep) {
+        String id = epToId.remove(ep);
+        if (id != null) {
+            Peer p = peers.get(id);
+            if (p != null && ep.equals(p.ep)) p.ep = null;
+        }
+    }
+
+    @Override
+    public void onState(String state, String msg) {
+        nearbyState = state;
+        nearbyMsg = msg == null ? "" : msg;
+        try {
+            JSONObject o = new JSONObject();
+            o.put("state", state);
+            o.put("msg", nearbyMsg);
+            emit("nearby", o);
+        } catch (Exception ignored) { }
     }
 
     // ------------------------------------------------------------ helpers
+
+    private void exec(Job j) {
+        try {
+            worker.execute(() -> { try { j.run(); } catch (Exception ignored) { } });
+        } catch (Exception ignored) { }
+    }
 
     private JSONObject base(String type) throws Exception {
         JSONObject o = new JSONObject();
@@ -174,20 +279,41 @@ public class Engine {
         return o;
     }
 
-    private void send(JSONObject o, InetAddress to) {
-        try {
-            byte[] b = o.toString().getBytes(StandardCharsets.UTF_8);
-            ctrlSock.send(new DatagramPacket(b, b.length, to, CTRL_PORT));
-        } catch (Exception ignored) { }
+    private static byte[] bytes(JSONObject o) { return o.toString().getBytes(StandardCharsets.UTF_8); }
+
+    private void udp(byte[] b, InetAddress to) {
+        try { if (ctrlSock != null) ctrlSock.send(new DatagramPacket(b, b.length, to, CTRL_PORT)); } catch (Exception ignored) { }
     }
 
-    private void broadcast(JSONObject o) {
-        for (InetAddress a : bcast) send(o, a);
+    private boolean lanFresh(Peer p) {
+        return p.addr != null && System.currentTimeMillis() - p.lastLan < LAN_FRESH;
+    }
+
+    private boolean nearbyOk(Peer p) {
+        NearbyLink nl = nearby;
+        return nl != null && p.ep != null && nl.isConnected(p.ep);
+    }
+
+    private void sendTo(Peer p, JSONObject o) {
+        byte[] b = bytes(o);
+        if (lanFresh(p)) udp(b, p.addr);
+        else if (nearbyOk(p)) nearby.send(p.ep, b);
+        else if (p.addr != null) udp(b, p.addr);
+    }
+
+    private void reply(JSONObject o, InetAddress from, String ep) {
+        byte[] b = bytes(o);
+        NearbyLink nl = nearby;
+        if (from != null) udp(b, from);
+        else if (ep != null && nl != null) nl.send(ep, b);
     }
 
     private void sendToAll(JSONObject o) {
-        broadcast(o);
-        for (Peer p : peers.values()) send(o, p.addr);
+        byte[] b = bytes(o);
+        for (InetAddress a : bcast) udp(b, a);
+        for (Peer p : peers.values()) if (p.addr != null) udp(b, p.addr);
+        NearbyLink nl = nearby;
+        if (nl != null) nl.sendAll(b);
     }
 
     private void emit(String type, JSONObject data) {
@@ -207,7 +333,6 @@ public class Engine {
         try { tone.startTone(t, ms); } catch (Exception ignored) { }
     }
 
-    /** Sve IPv4 adrese ovog uređaja (Wi-Fi, hotspot...). */
     public static JSONArray localIps() {
         JSONArray arr = new JSONArray();
         try {
@@ -249,11 +374,7 @@ public class Engine {
         bcast = list;
     }
 
-    private boolean isMyAddress(InetAddress a) {
-        try { return NetworkInterface.getByInetAddress(a) != null; } catch (Exception e) { return false; }
-    }
-
-    // ------------------------------------------------------------ control rx
+    // ------------------------------------------------------------ control
 
     private void ctrlLoop() {
         byte[] buf = new byte[65000];
@@ -261,31 +382,35 @@ public class Engine {
             try {
                 DatagramPacket p = new DatagramPacket(buf, buf.length);
                 ctrlSock.receive(p);
-                String s = new String(p.getData(), 0, p.getLength(), StandardCharsets.UTF_8);
-                JSONObject o = new JSONObject(s);
-                String id = o.optString("id");
-                if (id.isEmpty() || id.equals(myId)) continue;
-                handleCtrl(o, p.getAddress());
+                final String s = new String(p.getData(), 0, p.getLength(), StandardCharsets.UTF_8);
+                final InetAddress from = p.getAddress();
+                exec(() -> {
+                    JSONObject o = new JSONObject(s);
+                    String id = o.optString("id");
+                    if (!id.isEmpty() && !id.equals(myId)) handleCtrl(o, from, null);
+                });
             } catch (Exception e) {
                 if (!running) break;
             }
         }
     }
 
-    private Peer touch(JSONObject o, InetAddress from) {
+    private Peer touch(JSONObject o, InetAddress from, String ep) {
         String id = o.optString("id");
         Peer p = peers.get(id);
         boolean isNew = p == null;
+        long now = System.currentTimeMillis();
         if (isNew) {
             p = new Peer();
             p.id = id;
             p.hash = id.hashCode();
-            p.joined = System.currentTimeMillis();
+            p.joined = now;
         }
         p.name = o.optString("name", "?");
-        p.addr = from;
         p.ch = o.optInt("ch", 1);
-        p.lastSeen = System.currentTimeMillis();
+        p.lastSeen = now;
+        if (from != null) { p.addr = from; p.lastLan = now; }
+        if (ep != null) { p.ep = ep; epToId.put(ep, id); }
         if (isNew) {
             peers.put(id, p);
             try {
@@ -293,21 +418,20 @@ public class Engine {
                 e.put("id", id);
                 e.put("name", p.name);
                 e.put("ch", p.ch);
-                e.put("ip", from.getHostAddress());
                 emit("join", e);
+                JSONObject h = base("hello");
+                h.put("talk", talking);
+                reply(h, from, ep);
             } catch (Exception ignored) { }
             beep(ToneGenerator.TONE_PROP_ACK, 150);
-            // odmah se javi novom uređaju da i on nas vidi
-            try { send(base("hello"), from); } catch (Exception ignored) { }
         }
         return p;
     }
 
-    private void handleCtrl(JSONObject o, InetAddress from) throws Exception {
-        String t = o.optString("t");
-        switch (t) {
+    private void handleCtrl(JSONObject o, InetAddress from, String ep) throws Exception {
+        switch (o.optString("t")) {
             case "hello": {
-                Peer p = touch(o, from);
+                Peer p = touch(o, from, ep);
                 p.talking = o.optBoolean("talk", false);
                 break;
             }
@@ -317,29 +441,28 @@ public class Engine {
                 break;
             }
             case "ping": {
-                touch(o, from);
+                touch(o, from, ep);
                 JSONObject r = base("pong");
                 r.put("ts", o.optLong("ts"));
-                send(r, from);
+                reply(r, from, ep);
                 break;
             }
             case "pong": {
-                Peer p = touch(o, from);
+                Peer p = touch(o, from, ep);
                 p.rtt = (int) Math.max(1, System.currentTimeMillis() - o.optLong("ts"));
                 break;
             }
             case "msg": {
-                touch(o, from);
+                touch(o, from, ep);
                 String mid = o.optString("mid");
                 JSONObject ack = base("ack");
                 ack.put("mid", mid);
-                send(ack, from);
+                reply(ack, from, ep);
                 if (seenMsgs.containsKey(mid)) break;
                 seenMsgs.put(mid, true);
                 String to = o.optString("to", "");
-                boolean priv = !to.isEmpty();
-                if (priv && !to.equals(myId)) break;
-                if (!priv && o.optInt("ch", 1) != channel) break;
+                if (!to.isEmpty() && !to.equals(myId)) break;
+                if (to.isEmpty() && o.optInt("ch", 1) != channel) break;
                 emit("msg", o);
                 break;
             }
@@ -358,7 +481,7 @@ public class Engine {
                 break;
             }
             case "buzz": {
-                touch(o, from);
+                touch(o, from, ep);
                 if (myId.equals(o.optString("to"))) {
                     beep(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 600);
                     emit("buzz", o);
@@ -384,19 +507,21 @@ public class Engine {
         long n = 0;
         while (running) {
             try {
-                if (n % 20 == 0) refreshBroadcast();            // 5 s
-                if (n % 6 == 0) {                              // 1.5 s
+                if (n % 20 == 0) refreshBroadcast();
+                NearbyLink nl = nearby;
+                if (nl != null && n % 2 == 0) nl.tick();
+                if (n % 6 == 0) exec(() -> {
                     JSONObject h = base("hello");
                     h.put("talk", talking);
                     sendToAll(h);
-                }
-                if (n % 12 == 3) {                             // 3 s
+                });
+                if (n % 12 == 3) exec(() -> {
                     JSONObject ping = base("ping");
                     ping.put("ts", System.currentTimeMillis());
-                    for (Peer p : peers.values()) send(ping, p.addr);
-                }
-                if (n % 2 == 0) retryPending();                // 0.5 s
-                if (n % 4 == 0) {                              // 1 s
+                    for (Peer p : peers.values()) sendTo(p, ping);
+                });
+                if (n % 2 == 0) exec(this::retryPending);
+                if (n % 4 == 0) exec(() -> {
                     long now = System.currentTimeMillis();
                     Iterator<Peer> it = peers.values().iterator();
                     while (it.hasNext()) {
@@ -407,7 +532,7 @@ public class Engine {
                         }
                     }
                     emitPeers();
-                }
+                });
                 n++;
                 Thread.sleep(250);
             } catch (Exception e) {
@@ -415,6 +540,8 @@ public class Engine {
             }
         }
     }
+
+    public int peerCount() { return peers.size(); }
 
     private void emitPeers() throws Exception {
         JSONArray arr = new JSONArray();
@@ -424,16 +551,20 @@ public class Engine {
             o.put("id", p.id);
             o.put("name", p.name);
             o.put("ch", p.ch);
-            o.put("ip", p.addr.getHostAddress());
+            o.put("ip", p.addr != null ? p.addr.getHostAddress() : "");
+            o.put("via", lanFresh(p) ? "wifi" : nearbyOk(p) ? "nearby" : "wifi");
             o.put("age", now - p.lastSeen);
             o.put("rtt", p.rtt);
             o.put("talk", p.talking);
-            o.put("since", now - p.joined);
             arr.put(o);
         }
+        NearbyLink nl = nearby;
         JSONObject d = new JSONObject();
         d.put("peers", arr);
         d.put("ips", localIps());
+        d.put("nearby", nearbyState);
+        d.put("nearbyMsg", nearbyMsg);
+        d.put("links", nl != null ? nl.connectedCount() : 0);
         emit("peers", d);
     }
 
@@ -442,63 +573,56 @@ public class Engine {
         while (it.hasNext()) {
             Pending pd = it.next().getValue();
             pd.tries++;
-            if (pd.tries > 10 || pd.waiting.isEmpty()) {
-                it.remove();
-                continue;
-            }
+            if (pd.tries > 10 || pd.waiting.isEmpty()) { it.remove(); continue; }
             for (String id : new ArrayList<>(pd.waiting)) {
                 Peer p = peers.get(id);
                 if (p == null) { pd.waiting.remove(id); continue; }
-                send(pd.msg, p.addr);
+                sendTo(p, pd.msg);
             }
         }
     }
 
     // ------------------------------------------------------------ chat API
 
-    /** @param to id primaoca ili "" za sve na kanalu */
-    public String sendChat(String text, String to) {
-        try {
-            String mid = UUID.randomUUID().toString().substring(0, 12);
+    public String sendChat(final String text, final String to) {
+        final String mid = UUID.randomUUID().toString().substring(0, 12);
+        seenMsgs.put(mid, true);
+        exec(() -> {
             JSONObject o = base("msg");
             o.put("mid", mid);
             o.put("text", text);
             o.put("ts", System.currentTimeMillis());
-            if (to != null && !to.isEmpty()) o.put("to", to);
-            seenMsgs.put(mid, true);
+            boolean priv = to != null && !to.isEmpty();
+            if (priv) o.put("to", to);
 
             Pending pd = new Pending();
             pd.msg = o;
             pd.waiting = ConcurrentHashMap.newKeySet();
             for (Peer p : peers.values()) {
-                if (to != null && !to.isEmpty()) {
-                    if (p.id.equals(to)) pd.waiting.add(p.id);
-                } else if (p.ch == channel) {
-                    pd.waiting.add(p.id);
-                }
+                if (priv ? p.id.equals(to) : p.ch == channel) pd.waiting.add(p.id);
             }
             pd.total = pd.waiting.size();
             if (!pd.waiting.isEmpty()) pending.put(mid, pd);
-
             for (String id : pd.waiting) {
                 Peer p = peers.get(id);
-                if (p != null) send(o, p.addr);
+                if (p != null) sendTo(p, o);
             }
-            if (to == null || to.isEmpty()) broadcast(o);   // i za one koje još ne vidimo
-            return mid;
-        } catch (Exception e) {
-            return "";
-        }
+            if (!priv) {
+                byte[] b = bytes(o);
+                for (InetAddress a : bcast) udp(b, a);
+            }
+        });
+        return mid;
     }
 
-    public void buzz(String peerId) {
-        Peer p = peers.get(peerId);
-        if (p == null) return;
-        try {
+    public void buzz(final String peerId) {
+        exec(() -> {
+            Peer p = peers.get(peerId);
+            if (p == null) return;
             JSONObject o = base("buzz");
             o.put("to", peerId);
-            for (int i = 0; i < 3; i++) send(o, p.addr);
-        } catch (Exception ignored) { }
+            for (int i = 0; i < 2; i++) sendTo(p, o);
+        });
     }
 
     // ------------------------------------------------------------ walkie-talkie TX
@@ -508,15 +632,16 @@ public class Engine {
         talking = true;
         talkTarget = (target == null || target.isEmpty()) ? null : target;
         beep(ToneGenerator.TONE_PROP_BEEP, 80);
-        talkThread = new Thread(this::talkLoop, "talk");
-        talkThread.start();
+        new Thread(this::talkLoop, "talk").start();
     }
 
-    public synchronized void stopTalk() {
-        talking = false;
-    }
+    public synchronized void stopTalk() { talking = false; }
 
     public boolean isTalking() { return talking; }
+
+    public synchronized void toggleTalk(String target) {
+        if (talking) stopTalk(); else startTalk(target);
+    }
 
     private void talkLoop() {
         AudioRecord rec = null;
@@ -529,8 +654,6 @@ public class Engine {
                     AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(min, FRAME * 8));
             if (rec.getState() != AudioRecord.STATE_INITIALIZED) {
                 emitError("Mikrofon nije dostupan. Dozvoli mikrofon u postavkama aplikacije.");
-                talking = false;
-                emitTx(false);
                 return;
             }
             int sid = rec.getAudioSessionId();
@@ -541,54 +664,48 @@ public class Engine {
             rec.startRecording();
             emitTx(true);
 
-            byte[] pcm = new byte[FRAME];
-            byte[] pkt = new byte[HEADER + FRAME];
+            short[] pcm = new short[SAMPLES];
+            byte[] pkt = new byte[HEADER + SAMPLES];
             pkt[0] = 'B';
-            pkt[1] = 'T';
-            long h = myHash;
-            for (int i = 0; i < 8; i++) pkt[4 + i] = (byte) (h >>> (56 - 8 * i));
-            int seq = 0;
-            int frames = 0;
+            pkt[1] = '2';
+            for (int i = 0; i < 8; i++) pkt[4 + i] = (byte) (myHash >>> (56 - 8 * i));
+            int seq = 0, frames = 0;
 
             while (talking && running) {
-                int n = rec.read(pcm, 0, FRAME);
+                int n = rec.read(pcm, 0, SAMPLES);
                 if (n <= 0) continue;
-
-                // pojačanje + nivo
                 float g = gain;
                 long sum = 0;
-                for (int i = 0; i + 1 < n; i += 2) {
-                    int s = (short) ((pcm[i] & 0xff) | (pcm[i + 1] << 8));
-                    s = Math.round(s * g);
+                for (int i = 0; i < n; i++) {
+                    int s = Math.round(pcm[i] * g);
                     if (s > 32767) s = 32767;
                     if (s < -32768) s = -32768;
-                    pcm[i] = (byte) s;
-                    pcm[i + 1] = (byte) (s >> 8);
                     sum += (long) s * s;
+                    pkt[HEADER + i] = ulaw(s);
                 }
-
                 String tgt = talkTarget;
                 pkt[2] = (byte) channel;
                 pkt[3] = (byte) (tgt != null ? 1 : 0);
                 pkt[12] = (byte) (seq >> 8);
                 pkt[13] = (byte) seq;
                 seq = (seq + 1) & 0xffff;
-                System.arraycopy(pcm, 0, pkt, HEADER, n);
-                int len = HEADER + n;
+                byte[] out = Arrays.copyOf(pkt, HEADER + n);
 
                 int sent = 0;
                 if (tgt != null) {
                     Peer p = peers.get(tgt);
-                    if (p != null) { sendAudio(pkt, len, p.addr); sent++; }
+                    if (p != null) { sendAudio(p, out); sent++; }
                 } else {
-                    for (Peer p : peers.values()) {
-                        if (p.ch == channel) { sendAudio(pkt, len, p.addr); sent++; }
+                    for (Peer p : peers.values()) if (p.ch == channel) { sendAudio(p, out); sent++; }
+                    if (sent == 0) {
+                        for (InetAddress b : bcast) udpAudio(out, b);
+                        NearbyLink nl = nearby;
+                        if (nl != null) nl.sendAll(out);
                     }
-                    if (sent == 0) for (InetAddress b : bcast) sendAudio(pkt, len, b);
                 }
 
                 if (++frames % 4 == 0) {
-                    double rms = Math.sqrt(sum / (double) Math.max(1, n / 2)) / 32768.0;
+                    double rms = Math.sqrt(sum / (double) Math.max(1, n)) / 32768.0;
                     JSONObject l = new JSONObject();
                     l.put("v", Math.min(1.0, rms * 4));
                     l.put("to", sent);
@@ -608,8 +725,14 @@ public class Engine {
         }
     }
 
-    private void sendAudio(byte[] b, int len, InetAddress to) {
-        try { audioSock.send(new DatagramPacket(b, len, to, AUDIO_PORT)); } catch (Exception ignored) { }
+    private void sendAudio(Peer p, byte[] b) {
+        if (lanFresh(p)) udpAudio(b, p.addr);
+        else if (nearbyOk(p)) nearby.send(p.ep, b);
+        else if (p.addr != null) udpAudio(b, p.addr);
+    }
+
+    private void udpAudio(byte[] b, InetAddress to) {
+        try { if (audioSock != null) audioSock.send(new DatagramPacket(b, b.length, to, AUDIO_PORT)); } catch (Exception ignored) { }
     }
 
     private void emitTx(boolean on) {
@@ -622,11 +745,23 @@ public class Engine {
 
     // ------------------------------------------------------------ walkie-talkie RX
 
-    private void audioLoop() {
+    private void udpAudioLoop() {
         byte[] buf = new byte[4096];
+        while (running) {
+            try {
+                DatagramPacket p = new DatagramPacket(buf, buf.length);
+                audioSock.receive(p);
+                if (p.getLength() > HEADER && buf[0] == 'B' && buf[1] == '2') {
+                    audioQ.offer(Arrays.copyOf(buf, p.getLength()));
+                }
+            } catch (Exception e) {
+                if (!running) break;
+            }
+        }
+    }
+
+    private void playerLoop() {
         AudioTrack track = null;
-        long speaker = 0;
-        long lastPkt = 0;
         try {
             int min = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
             track = new AudioTrack(
@@ -646,53 +781,50 @@ public class Engine {
             emitError("Zvučnik nije dostupan: " + e.getMessage());
         }
 
-        byte[] silence = new byte[FRAME * 3];
+        short[] silence = new short[SAMPLES * 3];
+        short[] pcm = new short[SAMPLES * 4];
+        long speaker = 0, lastPkt = 0;
+        int lastSeq = -1;
 
         while (running) {
             try {
-                DatagramPacket p = new DatagramPacket(buf, buf.length);
-                try {
-                    audioSock.receive(p);
-                } catch (SocketTimeoutException te) {
-                    if (speaker != 0 && System.currentTimeMillis() - lastPkt > 500) {
-                        endRx(track, speaker);
-                        speaker = 0;
-                    }
-                    continue;
-                }
-                int len = p.getLength();
-                if (len <= HEADER || buf[0] != 'B' || buf[1] != 'T') continue;
-                long h = 0;
-                for (int i = 0; i < 8; i++) h = (h << 8) | (buf[4 + i] & 0xff);
-                if (h == myHash) continue;
-                if (talking) continue;                    // half-duplex kao pravi walkie-talkie
-                boolean priv = buf[3] == 1;
-                int ch = buf[2];
-                if (!priv && ch != channel) continue;
-
+                byte[] b = audioQ.poll(150, TimeUnit.MILLISECONDS);
                 long now = System.currentTimeMillis();
                 if (speaker != 0 && now - lastPkt > 500) {
                     endRx(track, speaker);
                     speaker = 0;
                 }
+                if (b == null) continue;
+
+                long h = 0;
+                for (int i = 0; i < 8; i++) h = (h << 8) | (b[4 + i] & 0xff);
+                if (h == myHash || talking) continue;
+                boolean priv = b[3] == 1;
+                if (!priv && b[2] != channel) continue;
+                int seq = ((b[12] & 0xff) << 8) | (b[13] & 0xff);
+
                 if (speaker == 0) {
                     speaker = h;
+                    lastSeq = -1;
                     beep(ToneGenerator.TONE_PROP_BEEP, 60);
                     if (track != null) {
                         track.play();
-                        track.write(silence, 0, silence.length);   // mali jitter buffer
+                        track.write(silence, 0, silence.length);
                     }
                     Peer who = peerByHash(h);
                     JSONObject o = new JSONObject();
                     o.put("on", true);
                     o.put("id", who != null ? who.id : "");
-                    o.put("name", who != null ? who.name : p.getAddress().getHostAddress());
+                    o.put("name", who != null ? who.name : "?");
                     o.put("priv", priv);
                     emit("rx", o);
                 }
-                if (h != speaker) continue;
+                if (h != speaker || seq == lastSeq) continue;
+                lastSeq = seq;
                 lastPkt = now;
-                if (track != null) track.write(buf, HEADER, len - HEADER);
+                int n = Math.min(b.length - HEADER, pcm.length);
+                for (int i = 0; i < n; i++) pcm[i] = ULAW_DEC[b[HEADER + i] & 0xff];
+                if (track != null) track.write(pcm, 0, n);
             } catch (Exception e) {
                 if (!running) break;
             }
@@ -701,12 +833,7 @@ public class Engine {
     }
 
     private void endRx(AudioTrack track, long speaker) {
-        try {
-            if (track != null) {
-                track.stop();
-                track.flush();
-            }
-        } catch (Exception ignored) { }
+        try { if (track != null) { track.stop(); track.flush(); } } catch (Exception ignored) { }
         beep(ToneGenerator.TONE_PROP_BEEP2, 100);
         try {
             Peer who = peerByHash(speaker);

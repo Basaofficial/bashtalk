@@ -229,18 +229,32 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
       <div class="sec">Uređaji u blizini</div>
       <div id="peerList"></div>
 
-      <div class="sec">Kako se spojiti bez interneta</div>
-      <div class="card">
+      <div class="sec">Auto-povezivanje</div>
+      <div class="card" id="nbCard">
+        <div class="set" style="border:0;padding:0 0 10px">
+          <div class="l"><b id="nbTitle">Auto-mreža</b><span id="nbSub">Bluetooth + Wi-Fi, bez hotspota i interneta</span></div>
+          <div class="tg" data-k="auto"></div>
+        </div>
         <div class="steps">
-          <div><span>Na <b>jednom</b> telefonu upali <b>hotspot</b>. Mobilni podaci ne trebaju.</span></div>
-          <div><span>Ostali se spoje na taj hotspot preko Wi-Fija. Ako pita, odaberi <b>„Ostani spojen”</b> iako nema interneta.</span></div>
-          <div><span>Svi otvore <b>#Bash Talk</b> i za par sekundi vide jedni druge.</span></div>
+          <div><span>Drži <b>Bluetooth</b> i <b>Wi-Fi</b> uključene. Ne moraju biti spojeni ni na šta.</span></div>
+          <div><span>Otvori <b>#Bash Talk</b> – telefoni u blizini se <b>sami pronađu i spoje</b>.</span></div>
+          <div><span>Domet je oko 10–30 m, kroz beton manje. Ako ste na istom Wi-Fiju, ide preko Wi-Fija (brže).</span></div>
         </div>
         <div class="row" style="margin-top:14px">
-          <button class="btn g" style="flex:1" id="hotBtn">📡 Hotspot</button>
+          <button class="btn" style="flex:1" id="btBtn">🔵 Bluetooth</button>
+          <button class="btn" style="flex:1" id="permBtn">🔑 Dozvole</button>
+        </div>
+        <div class="hint" id="nbErr" style="margin-top:10px;color:var(--red);display:none"></div>
+      </div>
+
+      <div class="sec">Ili preko hotspota</div>
+      <div class="card">
+        <div class="hint" style="text-align:left">Za veći domet: jedan telefon upali hotspot, ostali se spoje na njega. Radi i na Wi-Fi ruteru bez interneta.</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" style="flex:1" id="hotBtn">📡 Hotspot</button>
           <button class="btn" style="flex:1" id="wifiBtn">📶 Wi-Fi</button>
         </div>
-        <div class="hint" style="margin-top:12px">Radi i na običnom Wi-Fi ruteru bez interneta.<br>Moja IP: <span class="ips" id="myIps">—</span></div>
+        <div class="hint" style="margin-top:10px">Moja IP: <span class="ips" id="myIps">—</span></div>
       </div>
     </section>
 
@@ -250,6 +264,12 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
       <div class="card">
         <label style="font-size:12px;color:var(--mut);font-weight:700">NADIMAK</label>
         <input class="tin" id="nameInp" maxlength="24">
+      </div>
+
+      <div class="sec">Pozadina</div>
+      <div class="card">
+        <div class="set"><div class="l"><b>Radi u pozadini</b><span>Prima i šalje glas i kad je ekran ugašen. Kontrole su u obavještenju.</span></div><div class="tg" data-k="bg"></div></div>
+        <div class="set"><div class="l"><b>Ne gasi radi baterije</b><span>Preporučeno da Android ne ugasi aplikaciju</span></div><button class="btn" id="batBtn">Podesi</button></div>
       </div>
 
       <div class="sec">Zvuk</div>
@@ -271,7 +291,7 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
         <div class="set" style="border:0;padding:0"><div class="l"><b>Mikrofon</b><span id="micSt">—</span></div><button class="btn" id="appSetBtn">Otvori</button></div>
       </div>
 
-      <div class="foot"><span class="logo">#Bash Talk</span>v1.0 · offline walkie-talkie & chat</div>
+      <div class="foot"><span class="logo">#Bash Talk</span>v2.0 · offline walkie-talkie & chat</div>
     </section>
   </main>
 
@@ -383,7 +403,7 @@ function updStatus(rxName, priv){
     $('#stSub').textContent = rxOn.priv ? 'Priča samo tebi' : 'Priča na kanalu ' + st.ch;
   } else {
     $('#stBig').textContent = peers.length ? 'Spremno' : 'Tražim uređaje…';
-    $('#stSub').textContent = peers.length ? `${peersOnCh().length} na kanalu ${st.ch} · drži dugme i pričaj` : 'Spoji se na isti Wi-Fi ili hotspot';
+    $('#stSub').textContent = peers.length ? `${peersOnCh().length} na kanalu ${st.ch} · drži dugme i pričaj` : 'Telefoni u blizini se sami spajaju';
   }
 }
 const peersOnCh = () => peers.filter(p => p.ch === st.ch);
@@ -466,14 +486,14 @@ function renderPeers(){
   const db = $('#devBadge'); db.textContent = cnt; db.style.display = cnt ? 'flex' : 'none';
 
   const L = $('#peerList');
-  if (!cnt) L.innerHTML = `<div class="card empty" style="margin:0"><div class="e">📡</div>Tražim uređaje…<br><span style="font-size:12px">Telefoni moraju biti na istom Wi-Fiju ili hotspotu</span></div>`;
+  if (!cnt) L.innerHTML = `<div class="card empty" style="margin:0"><div class="e">📡</div>Tražim uređaje…<br><span style="font-size:12px">Telefoni se sami spoje kad su u blizini i imaju otvoren #Bash Talk</span></div>`;
   else L.innerHTML = peers.map(p => {
     const fresh = p.age < 3500;
     const same = p.ch === st.ch;
     return `<div class="peer ${p.talk?'talk':''}">
       <div class="av">${esc(initials(p.name))}<span class="dot ${fresh?'on':'mid'}"></span></div>
       <div class="pi"><b>${esc(p.name)}${p.talk?' 🎙️':''}</b>
-        <span>${same?'<span style="color:var(--g)">● Kanal '+p.ch+'</span>':'Kanal '+p.ch}${p.rtt>0?' · '+p.rtt+' ms':''}</span></div>
+        <span>${same?'<span style="color:var(--g)">● Kanal '+p.ch+'</span>':'Kanal '+p.ch} · ${p.via==='nearby'?'🔵':'📶'}${p.rtt>0?' · '+p.rtt+' ms':''}</span></div>
       ${bars(p.rtt,p.age)}
       <div class="pa">
         <button class="btn sq" data-a="talk" data-id="${esc(p.id)}" title="Pričaj samo njemu">🎙️</button>
@@ -510,6 +530,17 @@ function renderPeers(){
   updStatus();
 }
 $('#hotBtn').onclick = () => A.openHotspot();
+$('#btBtn').onclick = () => A.openBluetooth();
+$('#permBtn').onclick = () => { A.askPerms(); setTimeout(() => A.openAppSettings(), 600); };
+$('#batBtn').onclick = () => A.batteryOpt();
+function nbState(state, msg, links){
+  const t = $('#nbTitle'), sub = $('#nbSub'), err = $('#nbErr');
+  if (state === 'on') { t.innerHTML = '<span class="dot on" style="display:inline-block;margin-right:6px"></span>Auto-mreža aktivna'; sub.textContent = links ? `Direktno spojeno: ${links}` : 'Tražim telefone u blizini…'; }
+  else if (state === 'error') { t.textContent = '⚠️ Auto-mreža'; sub.textContent = 'Nije pokrenuta'; }
+  else { t.textContent = 'Auto-mreža isključena'; sub.textContent = 'Uključi da se telefoni sami spoje'; }
+  err.style.display = state === 'error' && msg ? 'block' : 'none';
+  err.textContent = msg ? msg + ' – provjeri dozvole, Bluetooth i lokaciju.' : '';
+}
 $('#wifiBtn').onclick = () => A.openWifi();
 
 /* ---------- postavke ---------- */
@@ -523,6 +554,7 @@ $$('.tg').forEach(t => {
   t.onclick = () => { const v = !t.classList.contains('on'); t.classList.toggle('on', v); A.setOption(k, v); st[k] = v; };
 });
 $('#appSetBtn').onclick = () => A.openAppSettings();
+function permState(){ if (st.permsOk === false) { $('#nbErr').style.display='block'; $('#nbErr').textContent = 'Nedostaju dozvole (Bluetooth / uređaji u blizini). Dodirni „Dozvole”.'; } }
 function micState(){ $('#micSt').textContent = st.micOk ? '✓ Dozvoljen' : '✕ Nije dozvoljen – potreban za walkie-talkie'; $('#micSt').style.color = st.micOk ? 'var(--g)' : 'var(--red)'; }
 
 /* ---------- eventi iz Androida ---------- */
@@ -531,6 +563,7 @@ window.onEvent = function(t, d){
     case 'peers':
       peers = d.peers.sort((a,b) => (b.ch===st.ch) - (a.ch===st.ch) || a.name.localeCompare(b.name));
       if (d.ips) $('#myIps').textContent = d.ips.map(x => x.ip).join(', ') || '— (nisi na Wi-Fiju)';
+      if (d.nearby) nbState(d.nearby, d.nearbyMsg, d.links);
       renderPeers();
       break;
     case 'join':
@@ -572,31 +605,33 @@ window.onEvent = function(t, d){
       sysMsg('📳 ' + d.name + ' te zove', 1);
       break;
     case 'error': toast(d.msg, true); break;
+    case 'nearby': nbState(d.state, d.msg, 0); break;
   }
 };
 
 /* ---------- start ---------- */
 setCh(st.ch || 1);
 micState();
+permState();
 renderMsgs();
 renderPeers();
 A.ready();
-setInterval(() => { try { const s = JSON.parse(A.getState()); if (s.micOk !== st.micOk) { st.micOk = s.micOk; micState(); } } catch(e){} }, 3000);
+setInterval(() => { try { const s = JSON.parse(A.getState()); if (s.micOk !== st.micOk) { st.micOk = s.micOk; micState(); } st.permsOk = s.permsOk; } catch(e){} }, 3000);
 
 /* ---------- demo za pregled u pregledniku ---------- */
 function makeDemo(){
   const ppl = [{id:'a1',name:'Mirza',ch:1},{id:'b2',name:'Kemo',ch:1},{id:'c3',name:'Ivan Montaža',ch:2}];
   let t0 = Date.now();
   const emit = (t,d) => setTimeout(() => window.onEvent && window.onEvent(t,d), 0);
-  setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], talk:false})), ips:[{ip:'192.168.43.1'}]}), 1000);
+  setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], via:['nearby','nearby','wifi'][i], talk:false})), ips:[], nearby:'on', nearbyMsg:'', links:2}), 1000);
   setTimeout(() => emit('msg', {mid:'x1', id:'a1', name:'Mirza', text:'Ima li struje na -1? 😄', ts:Date.now()}), 1500);
   return {
-    getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,micOk:true,ips:[]}),
+    getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,auto:true,bg:false,micOk:true,permsOk:true,ips:[]}),
     ready(){}, setName(){}, setChannel(){}, setGain(){}, setOption(){}, setPttTarget(){}, vib(){},
     sendChat(t){ const mid = 'd'+Date.now(); setTimeout(()=>emit('delivered',{mid,got:1,total:2}),300); setTimeout(()=>emit('delivered',{mid,got:2,total:2}),700); return mid; },
     startTalk(){ emit('tx',{on:true}); this._iv = setInterval(()=>emit('level',{v:Math.random()}),100); },
     stopTalk(){ clearInterval(this._iv); emit('tx',{on:false}); },
-    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}
+    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}
   };
 }
 })();
