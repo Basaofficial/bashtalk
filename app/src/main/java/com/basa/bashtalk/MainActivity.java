@@ -65,7 +65,22 @@ public class MainActivity extends Activity implements Engine.Listener {
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
         s.setMediaPlaybackRequiresUserGesture(false);
-        web.setWebChromeClient(new WebChromeClient());
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final android.webkit.PermissionRequest req) {
+                // samo naša online stranica smije tražiti mikrofon
+                String origin = req.getOrigin() != null ? req.getOrigin().toString() : "";
+                boolean ok = origin.startsWith("https://basaofficial.github.io");
+                runOnUiThread(() -> {
+                    if (ok && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        req.grant(new String[]{android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        req.deny();
+                        if (ok) requestNeeded();
+                    }
+                });
+            }
+        });
         web.addJavascriptInterface(new Bridge(), "Android");
         web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
@@ -537,6 +552,19 @@ public class MainActivity extends Activity implements Engine.Listener {
                 if (v == null) return;
                 if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
             } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
+        public boolean isOnline() { return Updater.online(MainActivity.this); }
+
+        @JavascriptInterface
+        public void share(String text) {
+            main.post(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text);
+                    startActivity(Intent.createChooser(i, "Pozovi na #Bash Talk"));
+                } catch (Exception ignored) { }
+            });
         }
 
         @JavascriptInterface
