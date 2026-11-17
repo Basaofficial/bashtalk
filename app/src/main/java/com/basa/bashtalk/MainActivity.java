@@ -134,8 +134,29 @@ public class MainActivity extends Activity implements Engine.Listener {
         handleIntent(intent);
     }
 
+    /** Otvori Samsung Auto Blocker (ili najbližu postavku sigurnosti). */
+    void openAutoBlocker() {
+        String[][] cands = {
+                {"com.android.settings", "com.android.settings.Settings$AutoBlockerSettingsActivity"},
+                {"com.android.settings", "com.samsung.android.settings.autoblocker.AutoBlockerSettingsActivity"},
+                {"com.samsung.android.sm.devicesecurity", "com.samsung.android.sm.autoblocker.AutoBlockerActivity"},
+        };
+        for (String[] c : cands) {
+            try {
+                startActivity(new Intent().setClassName(c[0], c[1]).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return;
+            } catch (Exception ignored) { }
+        }
+        try { startActivity(new Intent(Settings.ACTION_SECURITY_SETTINGS)); return; } catch (Exception ignored) { }
+        try { startActivity(new Intent(Settings.ACTION_SETTINGS)); } catch (Exception ignored) { }
+    }
+
     private void handleIntent(Intent intent) {
         if (intent == null) return;
+        if (intent.getBooleanExtra("openAB", false)) {
+            prefs.edit().putBoolean("abOff", false).apply();
+            main.postDelayed(this::openAutoBlocker, 300);
+        }
         if (intent.getBooleanExtra("openUpdate", false)) js("window.openUpdate && window.openUpdate()");
         if (intent.getBooleanExtra("openSos", false)) js("window.openSos && window.openSos()");
     }
@@ -420,6 +441,8 @@ public class MainActivity extends Activity implements Engine.Listener {
                 o.put("wfdPass", WifiDirectLink.PASS);
                 o.put("webPort", WebServer.PORT);
                 o.put("sos", e != null && e.isSos());
+                o.put("samsung", "samsung".equalsIgnoreCase(Build.MANUFACTURER));
+                o.put("abOff", prefs.getBoolean("abOff", false));
                 o.put("ogroup", prefs.getString("ogroup", ""));
                 o.put("opass", prefs.getString("opass", ""));
                 o.put("online", prefs.getBoolean("online", true));
@@ -649,6 +672,12 @@ public class MainActivity extends Activity implements Engine.Listener {
 
         @JavascriptInterface
         public void setStr(String k, String v) { prefs.edit().putString(k, v == null ? "" : v).apply(); }
+
+        @JavascriptInterface
+        public void openAutoBlocker(boolean turningOff) {
+            if (turningOff) prefs.edit().putBoolean("abOff", true).apply();
+            main.post(MainActivity.this::openAutoBlocker);
+        }
 
         @JavascriptInterface
         public boolean isOnline() { return Updater.online(MainActivity.this); }

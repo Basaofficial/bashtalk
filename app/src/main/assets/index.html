@@ -490,6 +490,7 @@ nav button svg{width:22px;height:22px}
           <button data-m="off">Isključeno</button>
         </div>
         <div class="prog" id="updProg" style="display:none"><i></i></div>
+        <div class="set" id="abRow" style="display:none;border:0;padding-bottom:0"><div class="l"><b>🛡️ Samsung Auto Blocker</b><span>Blokira update? Isključi ga dok se instalira, pa ga vrati.</span></div><button class="btn" id="abBtn2">Otvori</button></div>
       </div>
 
       <div class="sec">Kontakt</div>
@@ -521,6 +522,11 @@ nav button svg{width:22px;height:22px}
   <div class="notes" id="updNotes"></div>
   <div class="prog" id="updProg2" style="display:none"><i></i></div>
   <div class="hint" id="updMsg" style="margin-top:8px;display:none"></div>
+  <div id="abBox" style="display:none;margin-top:12px;padding:10px 12px;border-radius:14px;background:#141100;border:1px solid #3a3200;text-align:left">
+    <div style="font-size:13px;font-weight:700;color:var(--yel)">🛡️ Samsung Auto Blocker blokira update?</div>
+    <div class="hint" style="text-align:left;margin:4px 0 8px">Isključi ga, vrati se ovdje i dodirni „Instaliraj”. Poslije te podsjetim da ga opet uključiš.</div>
+    <button class="btn" id="abBtn" style="width:100%">🛡️ Otvori Auto Blocker</button>
+  </div>
   <div class="row" style="margin-top:14px" id="updBtns">
     <button class="btn" style="flex:1" id="updLater">Kasnije</button>
     <button class="btn g" style="flex:1.4" id="updGo">Instaliraj sad</button>
@@ -976,11 +982,15 @@ function showUpd(d){
   $('#updNotes').style.display = '';
   $('#updBtns').style.display = 'flex';
   $('#updMsg').style.display = 'none';
+  $('#abBox').style.display = st.samsung ? 'block' : 'none';
   $('#upd').classList.add('show');
 }
 function updProgress(pct){
   [$('#updProg'), $('#updProg2')].forEach(p => { p.style.display = 'block'; p.querySelector('i').style.width = pct + '%'; });
 }
+$('#abBtn').onclick = () => A.openAutoBlocker(true);
+if (st.samsung) $('#abRow').style.display = 'flex';
+$('#abBtn2').onclick = () => A.openAutoBlocker(false);
 $('#updLater').onclick = () => { A.snoozeUpdate(); $('#upd').classList.remove('show'); toast('Podsjetit ću te kasnije'); };
 $('#updGo').onclick = () => { A.installUpdate(); $('#updBtns').style.display = 'none'; updMsg('Preuzimam…'); };
 function updMsg(t){ const m = $('#updMsg'); m.style.display = 'block'; m.textContent = t; $('#updSt').textContent = t; }
@@ -1000,7 +1010,12 @@ function onUpdate(d){
       break;
     case 'installing': updMsg('📦 Instaliram…'); updProgress(100); break;
     case 'confirm': updMsg('Potvrdi instalaciju u prozoru koji se otvorio.'); break;
-    case 'error': updMsg('⚠️ ' + (d.msg || 'Greška')); $('#updBtns').style.display = 'flex'; $('#updGo').textContent = 'Pokušaj opet'; toast('Ažuriranje: ' + (d.msg || 'greška'), true); break;
+    case 'error':
+      updMsg('⚠️ ' + (d.msg || 'Greška') + (st.samsung ? ' – vjerovatno Auto Blocker. Isključi ga pa dodirni „Pokušaj opet”.' : ''));
+      $('#upd').classList.add('show');
+      $('#updBtns').style.display = 'flex'; $('#updGo').textContent = 'Pokušaj opet';
+      if (st.samsung) $('#abBox').style.display = 'block';
+      toast('Ažuriranje: ' + (d.msg || 'greška'), true); break;
   }
 }
 
@@ -1285,7 +1300,7 @@ function makeDemo(){
     sendChat(t){ const mid = 'd'+Date.now(); setTimeout(()=>emit('delivered',{mid,got:1,total:2}),300); setTimeout(()=>emit('delivered',{mid,got:2,total:2}),700); return mid; },
     startTalk(){ emit('tx',{on:true}); this._iv = setInterval(()=>emit('level',{v:Math.random()}),100); },
     stopTalk(){ clearInterval(this._iv); emit('tx',{on:false}); },
-    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, isOnline(){ return false; }, share(){}, netType(){ return '5G'; }, playOnline(){}, injectOnline(){}, saveOnlineMedia(){ return ''; }, setOnlineAudio(){}, setStr(){}, pickImage(){}, startNote(){return true;}, stopNote(){return JSON.stringify({mid:'v'+Date.now(),url:'',dur:3.2});},
+    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, isOnline(){ return false; }, openAutoBlocker(){}, share(){}, netType(){ return '5G'; }, playOnline(){}, injectOnline(){}, saveOnlineMedia(){ return ''; }, setOnlineAudio(){}, setStr(){}, pickImage(){}, startNote(){return true;}, stopNote(){return JSON.stringify({mid:'v'+Date.now(),url:'',dur:3.2});},
     sos(on){ emit('mySos',{on}); }, sosAck(){}, muteSiren(){}, sosList(){return '[]';}, fallOk(){ emit('fall',{left:-1}); }, getHistory(){ return JSON.stringify({list:[{name:'Mirza',ts:Date.now()-60000,dur:4.2,url:''}]}); },
     getTasks(){ return JSON.stringify({list:[{tid:'t1',text:'Montirati FI u ormaru -1',by:'Mirza',who:'Basa',done:false,created:1},{tid:'t2',text:'Kabel NYM 5x2.5 do garaže',by:'Basa',done:true,editBy:'Kemo',created:2}]}); }, saveTask(){}, setFloor(){return true;}, clearFloor(){}, setUpdMode(){}, snoozeUpdate(){}, openUrl(){}, allowInstalls(){},
     checkUpdate(){ emit('update',{state:'available',tag:'v5',size:2100000,notes:'v2.1: auto-ažuriranja i Instagram kontakt'}); },
