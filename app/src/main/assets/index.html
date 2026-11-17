@@ -1112,7 +1112,7 @@ const ONLINE_URL = 'https://basaofficial.github.io/bashtalk/';
 let onFrame = null, onOk = false, onPeople = [], onRoom = '', onPriv = false;
 function onCfg(){ return st.ogroup ? {room: st.ogroup, pass: st.opass || ''} : {room: 'kanal-' + st.ch, pass: ''}; }
 function onPost(o){ try { if (onFrame && onFrame.contentWindow) onFrame.contentWindow.postMessage(Object.assign({net: A.netType ? A.netType() : ''}, o), '*'); } catch(e){} }
-function onJoin(){ const c = onCfg(); onPost({cmd:'join', room:c.room, pass:c.pass, name: st.name || ''}); }
+function onJoin(){ const c = onCfg(); onPost({cmd:'join', room:c.room, pass:c.pass, name: st.name || '', ecPriv: st.ecPriv || '', ecPub: st.ecPub || ''}); }
 function onSend(m){ if (!onOk) return false; onPost({cmd:'send', m}); return true; }
 function onStart(){
   if (st.online === false || onFrame) return;
@@ -1131,11 +1131,11 @@ window.addEventListener('message', e => {
   const d = e.data || {}; if (!d.bt) return;
   switch (d.type) {
     case 'ready': onJoin(); break;
-    case 'net': onOk = !!d.on; try { A.setOnlineAudio(onOk); } catch(e){} updChatHead(); break;
+    case 'net': onOk = !!d.on; updChatHead(); break;
     case 'room': onRoom = d.room; onPriv = !!d.priv; updChatHead(); break;
     case 'people': onPeople = d.list || []; renderPeers(); updChatHead(); break;
     case 'msg': onMsg(d.m); break;
-    case 'audio': try { A.playOnline(d.b64, d.id, d.name); } catch(e){} break;
+    case 'audio': break;   // glas preko interneta pušta usluga u pozadini
     case 'share': if (A.share) A.share(d.text); break;
   }
 });
@@ -1146,7 +1146,7 @@ function onMsg(m){
   else if (m.voice) { x.kind = 'voice'; x.url = A.saveOnlineMedia('voice', m.voice); x.dur = m.dur; }
   else x.text = m.text || '';
   if (addMsg(x)) notifyNew((m.dm ? '🔒 ' : '🌍 ') + m.name + ': ' + (x.text || (x.kind === 'img' ? '📷 slika' : '🎤 glasovna')).slice(0, 40));
-  if (st.gw !== false && !m.dm && x.text && !m.gw) { try { A.injectOnline(JSON.stringify(m)); } catch(e){} }
+
 }
 function notifyNew(t){ if (view !== 'chat') { unread++; badge(); toast(t); } A.vib && A.vib(40); }
 function updChatHead(){
@@ -1203,7 +1203,7 @@ window.onEvent = function(t, d){
     case 'msg': {
       const ok = addMsg({mid:d.mid, name:d.name, from:d.id, text:d.text, ts:d.ts || Date.now(), to:d.to || '', src:'off', via:d.via});
       if (ok) notifyNew('💬 ' + d.name + ': ' + d.text.slice(0, 40));
-      if (ok && onOk && st.gw !== false && !d.to && d.on !== 1) onSend({mid:d.mid, id:'a' + d.id, name:d.name, text:d.text, ts:d.ts || Date.now(), gw: st.name || 'most'});
+
       break;
     }
     case 'delivered': {
@@ -1212,7 +1212,7 @@ window.onEvent = function(t, d){
       break;
     }
     case 'tx': setTx(d.on); break;
-    case 'otx': onPost({cmd:'audio', b64:d.b64}); break;
+    case 'onlineMsg': onMsg(d.m); break;
     case 'level': {
       const s = 1 + d.v * .25;
       $('#ring').style.transform = `scale(${s})`;

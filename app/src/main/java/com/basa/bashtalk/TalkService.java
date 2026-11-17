@@ -35,7 +35,7 @@ import java.util.UUID;
  * Drži Engine živim; u pozadinskom načinu radi kao foreground usluga.
  * Ovdje su i: SOS sirena, detekcija pada, barometar, dugme slušalica, web server.
  */
-public class TalkService extends Service implements Engine.Listener, SensorHub.Sink {
+public class TalkService extends Service implements Engine.Listener, SensorHub.Sink, OnlineLink.Sink {
 
     static final String ACTION_FG = "com.basa.bashtalk.FG";
     static final String ACTION_BG = "com.basa.bashtalk.BG";
@@ -59,6 +59,7 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
     SensorHub sensors;
     Siren siren;
     WebServer webServer;
+    OnlineLink online;
     private MediaSession media;
     private SharedPreferences prefs;
     private boolean foreground;
@@ -131,6 +132,13 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
         sensors.start(prefs.getBoolean("fall", false));
         setWeb(prefs.getBoolean("web", true));
         setHeadset(prefs.getBoolean("hsPtt", false));
+        online = new OnlineLink(this, id, this);
+        refreshOnline();
+        if (prefs.getBoolean("online", true)) online.start();
+        android.content.IntentFilter sf = new android.content.IntentFilter();
+        sf.addAction(Intent.ACTION_SCREEN_OFF);
+        sf.addAction(Intent.ACTION_SCREEN_ON);
+        registerReceiver(screenRx, sf);
         h.postDelayed(updTick, 60_000L);
     }
 
@@ -164,9 +172,55 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
         return foreground ? START_STICKY : START_NOT_STICKY;
     }
 
+    private final android.content.BroadcastReceiver screenRx = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            engine.setLowPower(Intent.ACTION_SCREEN_OFF.equals(i.getAction()));
+        }
+    };
+
+    /** Soba za online: grupa (ako je postavljena) ili javni kanal-N. */
+    void refreshOnline() {
+        if (online == null) return;
+        String g = prefs.getString("ogroup", "");
+        online.myName = engine.name;
+        online.net = MainActivity.netTypeOf(this);
+        online.setRoom(g.isEmpty() ? "kanal-" + engine.channel : g, prefs.getString("opass", ""));
+    }
+
+    void setOnline(boolean on) {
+        if (online == null) return;
+        if (on) online.start(); else online.stop();
+    }
+
+    // ------------------------------------------------------------ OnlineLink.Sink
+
+    @Override
+    public void onOnlineMsg(JSONObject m, boolean dm) {
+        try {
+            if (!dm && prefs.getBoolean("gw", true) && m.has("text") && !m.has("gw")) engine.injectOnline(m);
+            JSONObject ev = new JSONObject();
+            ev.put("m", m);
+            onEvent("onlineMsg", ev);
+        } catch (Exception ignored) { }
+    }
+
+    @Override
+    public void onOnlineAudio(String id, String name, byte[] ulaw) {
+        engine.playExternal(ulaw, id, name);
+    }
+
+    @Override
+    public void onOnlineState(boolean on) {
+        engine.onlineAudio = on;
+        if (on) online.net = MainActivity.netTypeOf(this);
+    }
+
     @Override
     public void onDestroy() {
         h.removeCallbacksAndMessages(null);
+        try { unregisterReceiver(screenRx); } catch (Exception ignored) { }
+        try { if (online != null) online.stop(); } catch (Exception ignored) { }
         inst = null;
         try { sensors.stop(); } catch (Exception ignored) { }
         try { siren.stop(); } catch (Exception ignored) { }
@@ -495,7 +549,30 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
                 break;
             }
             case "buzz": vibrate(new long[]{0, 300, 150, 300, 150, 600}); break;
+            case "otx":
+                if (online != null) try { online.sendAudio(android.util.Base64.decode(data.optString("b64"), android.util.Base64.DEFAULT)); } catch (Exception ignored) { }
+                return;
+            case "onlineMsg":
+                if (prefs.getBoolean("vib", true)) vibrate(new long[]{0, 60});
+                break;
             case "msg":
+                // most: poruka iz blizine → i online (za one daleko)
+                if (online != null && online.isConnected() && prefs.getBoolean("gw", true)
+                        && data.optInt("on") != 1 && data.optString("to", "").isEmpty()) {
+                    try {
+                        JSONObject m = new JSONObject();
+                        m.put("t", "msg");
+                        m.put("mid", data.optString("mid"));
+                        m.put("id", "a" + data.optString("id"));
+                        m.put("name", data.optString("name"));
+                        m.put("text", data.optString("text"));
+                        m.put("ts", data.optLong("ts", System.currentTimeMillis()));
+                        m.put("gw", engine.name);
+                        online.sendRoomMsg(m);
+                    } catch (Exception ignored) { }
+                }
+                if (prefs.getBoolean("vib", true)) vibrate(new long[]{0, 60});
+                break;
             case "media":
                 if (prefs.getBoolean("vib", true)) vibrate(new long[]{0, 60});
                 break;
@@ -519,7 +596,7 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
             return;
         }
         switch (type) {
-            case "msg": case "media": case "buzz": case "join": case "leave": case "delivered":
+            case "msg": case "media": case "buzz": case "join": case "leave": case "delivered": case "onlineMsg":
             case "sos": case "sosOff": case "sosack": case "tasks": case "hist": case "mySos":
                 synchronized (backlog) {
                     if (backlog.size() > 400) backlog.remove(0);
@@ -535,6 +612,12 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
                     "img".equals(data.optString("kind")) ? "Poslao/la je sliku" : "Glasovna poruka");
         } else if ("buzz".equals(type)) {
             notifyMsg("📳 " + data.optString("name") + " te zove!", "Otvori #Bash Talk");
+        } else if ("onlineMsg".equals(type)) {
+            JSONObject m = data.optJSONObject("m");
+            if (m != null) {
+                String body = m.has("img") ? "📷 Slika" : m.has("voice") ? "🎤 Glasovna poruka" : m.optString("text");
+                notifyMsg((m.optBoolean("dm") ? "🔒 " : "🌍 ") + m.optString("name"), body);
+            }
         } else if ("sosack".equals(type)) {
             notifyMsg("🆘 " + data.optString("name"), "Ide u pomoć!");
         }

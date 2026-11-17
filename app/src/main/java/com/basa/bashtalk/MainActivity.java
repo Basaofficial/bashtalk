@@ -63,6 +63,10 @@ public class MainActivity extends Activity implements Engine.Listener {
         getWindow().setNavigationBarColor(Color.BLACK);
         if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
         prefs = getSharedPreferences("bashtalk", MODE_PRIVATE);
+        if (!prefs.getBoolean("bgMig1", false)) {
+            // rad u pozadini je sad uključen odmah (kao pravi walkie-talkie)
+            prefs.edit().putBoolean("bg", true).putBoolean("bgMig1", true).apply();
+        }
         applyKeepScreen(prefs.getBoolean("keepOn", true));
 
         web = new WebView(this);
@@ -97,6 +101,16 @@ public class MainActivity extends Activity implements Engine.Listener {
         handleIntent(getIntent());
         watchCellGen();
         UpdateJob.schedule(this);
+        if (!prefs.getBoolean("batAsk1", false)) {
+            prefs.edit().putBoolean("batAsk1", true).apply();
+            main.postDelayed(() -> {
+                try {
+                    android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                    if (!pm.isIgnoringBatteryOptimizations(getPackageName()))
+                        startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+                } catch (Exception ignored) { }
+            }, 4000);
+        }
     }
 
     @Override
@@ -199,10 +213,12 @@ public class MainActivity extends Activity implements Engine.Listener {
         }
     }
 
+    String netType() { return netTypeOf(this); }
+
     @SuppressWarnings("deprecation")
-    String netType() {
+    static String netTypeOf(Context c) {
         try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            ConnectivityManager cm = (ConnectivityManager) c.getSystemService(CONNECTIVITY_SERVICE);
             Network n = cm.getActiveNetwork();
             NetworkCapabilities nc = n == null ? null : cm.getNetworkCapabilities(n);
             if (nc == null) return "";
@@ -210,8 +226,8 @@ public class MainActivity extends Activity implements Engine.Listener {
             if (nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) return "LAN";
             if (nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                 if (!cellGen.isEmpty()) return cellGen;
-                if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-                    int t = ((TelephonyManager) getSystemService(TELEPHONY_SERVICE)).getDataNetworkType();
+                if (c.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                    int t = ((TelephonyManager) c.getSystemService(TELEPHONY_SERVICE)).getDataNetworkType();
                     if (t == TelephonyManager.NETWORK_TYPE_NR) return "5G";
                     if (t == TelephonyManager.NETWORK_TYPE_LTE) return "4G";
                     return "3G";
@@ -443,6 +459,8 @@ public class MainActivity extends Activity implements Engine.Listener {
                 o.put("sos", e != null && e.isSos());
                 o.put("samsung", "samsung".equalsIgnoreCase(Build.MANUFACTURER));
                 o.put("abOff", prefs.getBoolean("abOff", false));
+                o.put("ecPriv", prefs.getString("ecPriv", ""));
+                o.put("ecPub", prefs.getString("ecPub", ""));
                 o.put("ogroup", prefs.getString("ogroup", ""));
                 o.put("opass", prefs.getString("opass", ""));
                 o.put("online", prefs.getBoolean("online", true));
@@ -464,6 +482,8 @@ public class MainActivity extends Activity implements Engine.Listener {
                 e.name = n;
                 if (e.auto) e.startNearby();
             }
+            TalkService s = TalkService.inst;
+            if (s != null) s.refreshOnline();
         }
 
         @JavascriptInterface
@@ -472,6 +492,8 @@ public class MainActivity extends Activity implements Engine.Listener {
             prefs.edit().putInt("ch", ch).apply();
             Engine e = TalkService.eng();
             if (e != null) e.channel = ch;
+            TalkService s = TalkService.inst;
+            if (s != null) s.refreshOnline();
         }
 
         @JavascriptInterface
@@ -495,6 +517,7 @@ public class MainActivity extends Activity implements Engine.Listener {
                 case "fall": if (svc != null) main.post(() -> svc.setFall(v)); break;
                 case "hsPtt": if (svc != null) main.post(() -> svc.setHeadset(v)); break;
                 case "web": if (svc != null) main.post(() -> svc.setWeb(v)); break;
+                case "online": if (svc != null) svc.setOnline(v); break;
                 case "bg": {
                     Intent i = new Intent(MainActivity.this, TalkService.class);
                     if (v) {
@@ -671,7 +694,11 @@ public class MainActivity extends Activity implements Engine.Listener {
         }
 
         @JavascriptInterface
-        public void setStr(String k, String v) { prefs.edit().putString(k, v == null ? "" : v).apply(); }
+        public void setStr(String k, String v) {
+            prefs.edit().putString(k, v == null ? "" : v).apply();
+            TalkService s = TalkService.inst;
+            if (s != null) s.refreshOnline();
+        }
 
         @JavascriptInterface
         public void openAutoBlocker(boolean turningOff) {

@@ -41,7 +41,8 @@ public class NearbyLink {
     private final String myId;
     private final Sink sink;
     private volatile String endpointName;
-    private volatile boolean on;
+    private volatile boolean on, lowPower, discovering;
+    private long burstAt;
 
     private final ConcurrentHashMap<String, String> epToId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> foundAt = new ConcurrentHashMap<>();
@@ -78,16 +79,35 @@ public class NearbyLink {
                 .addOnSuccessListener(v -> sink.onState("on", ""))
                 .addOnFailureListener(e -> sink.onState("error", "Oglašavanje: " + e.getMessage()));
 
+        startDisc();
+    }
+
+    private void startDisc() {
+        if (discovering) return;
+        discovering = true;
         cc.startDiscovery(SERVICE_ID, discovery,
                         new DiscoveryOptions.Builder().setStrategy(STRATEGY).build())
-                .addOnFailureListener(e -> sink.onState("error", "Traženje: " + e.getMessage()));
+                .addOnFailureListener(e -> { discovering = false; sink.onState("error", "Traženje: " + e.getMessage()); });
+    }
+
+    private void stopDisc() {
+        if (!discovering) return;
+        discovering = false;
+        try { cc.stopDiscovery(); } catch (Exception ignored) { }
+    }
+
+    /** Štednja baterije: kad je ekran ugašen, traži nove uređaje samo povremeno (20 s svake 2 min). */
+    public void setLowPower(boolean lp) {
+        lowPower = lp;
+        if (!on) return;
+        if (lp) { stopDisc(); burstAt = System.currentTimeMillis(); } else startDisc();
     }
 
     public void stop() {
         if (!on) return;
         on = false;
         try { cc.stopAdvertising(); } catch (Exception ignored) { }
-        try { cc.stopDiscovery(); } catch (Exception ignored) { }
+        stopDisc();
         try { cc.stopAllEndpoints(); } catch (Exception ignored) { }
         for (String ep : connected) sink.onDisconnected(ep);
         connected.clear();
@@ -101,6 +121,11 @@ public class NearbyLink {
     public void tick() {
         if (!on) return;
         long now = System.currentTimeMillis();
+        if (lowPower) {
+            long t = now - burstAt;
+            if (!discovering && t > 120000) { burstAt = now; startDisc(); }
+            else if (discovering && t > 20000) stopDisc();
+        }
         for (String ep : foundAt.keySet()) {
             if (connected.contains(ep)) continue;
             Long r = requested.get(ep);

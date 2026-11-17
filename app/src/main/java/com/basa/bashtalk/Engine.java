@@ -75,7 +75,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
     static final int HEADER = 14;
     static final int CHUNK = 1100;
     static final int BHEAD = 16;
-    static final long PEER_TIMEOUT = 7000;
+    static final long PEER_TIMEOUT = 16000;
     static final long REMOTE_TIMEOUT = 12000;
     static final long LAN_FRESH = 5000;
     static final long OUTBOX_TTL = 2 * 3600_000L;
@@ -144,6 +144,14 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
     volatile int floor = Integer.MIN_VALUE;
     volatile WebSink web;
     volatile boolean onlineAudio;
+    volatile boolean lowPower;
+
+    /** Ekran ugašen → rjeđe javljanje i traženje (manje baterije), prijem radi normalno. */
+    public void setLowPower(boolean lp) {
+        lowPower = lp;
+        NearbyLink nl = nearby;
+        if (nl != null) try { nl.setLowPower(lp); } catch (Throwable ignored) { }
+    }
     private final Map<Long, String> onlineNames = new ConcurrentHashMap<>();
     private final Map<Long, Integer> onlineSeq = new ConcurrentHashMap<>();
 
@@ -935,11 +943,12 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
                 if (n % 20 == 0) refreshBroadcast();
                 NearbyLink nl = nearby;
                 if (nl != null && n % 2 == 0) nl.tick();
-                if (n % 6 == 0) exec(() -> {
+                boolean lp = lowPower;
+                if (n % (lp ? 24 : 6) == 0) exec(() -> {
                     sendToAll(hello());
                     sendVirtualHellos();
                 });
-                if (n % 12 == 9 && mesh) exec(() -> {
+                if (n % (lp ? 48 : 12) == 9 && mesh) exec(() -> {
                     JSONObject b = hello();
                     b.put("t", "bcn");
                     b.put("mid", myId + ":" + (bcnSeq++));
@@ -947,7 +956,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
                     b.put("hop", 0);
                     flood(b, null);
                 });
-                if (n % 12 == 3) exec(() -> {
+                if (!lp && n % 12 == 3) exec(() -> {
                     JSONObject ping = base("ping");
                     ping.put("ts", System.currentTimeMillis());
                     for (Peer p : peers.values()) sendTo(p, ping);
@@ -955,7 +964,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
                 if (n % 4 == 1) exec(this::flushOutbox);
                 if (n % 8 == 5) exec(this::blobHousekeeping);
                 if (n % 16 == 2 && mySos) exec(this::broadcastSos);
-                if (n % 12 == 6) exec(this::coordinate);
+                if (n % (lp ? 48 : 12) == 6) exec(this::coordinate);
                 if (n % 4 == 0) exec(() -> {
                     long now = System.currentTimeMillis();
                     Iterator<Peer> it = peers.values().iterator();
@@ -1034,7 +1043,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
             }
         }
         UwbLink u = uwb;
-        if (u != null && u.getAvailable()) {
+        if (u != null && u.getAvailable() && !lowPower) {
             for (Peer p : peers.values()) {
                 if (p.uwbCap && now - p.lastSeen < 4000) u.tryStart(p.id);
             }
