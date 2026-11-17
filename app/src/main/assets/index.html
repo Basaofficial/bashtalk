@@ -971,7 +971,7 @@ $('#igFoot').onclick = () => A.openUrl(IG);
 function showUpd(d){
   if (d) updInfo = d;
   if (!updInfo) return;
-  $('#updVer').innerHTML = `Verzija <b style="color:var(--g)">${esc(updInfo.tag || '')}</b> · ${updInfo.size ? (updInfo.size/1048576).toFixed(1) + ' MB' : ''}<br>Trenutna: v${esc(st.version || '?')}`;
+  $('#updVer').innerHTML = `Verzija <b style="color:var(--g)">${esc(updInfo.ver || updInfo.tag || '')}</b> · ${updInfo.size ? (updInfo.size/1048576).toFixed(1) + ' MB' : ''}<br>Trenutna: v${esc(st.version || '?')}`;
   $('#updNotes').textContent = updInfo.notes || 'Poboljšanja i ispravke.';
   $('#updNotes').style.display = '';
   $('#updBtns').style.display = 'flex';
@@ -990,7 +990,7 @@ function onUpdate(d){
     case 'checking': $('#updSt').textContent = 'Provjeravam…'; break;
     case 'offline': $('#updSt').textContent = 'Nema interneta – provjerit ću kad se pojavi'; toast('📵 Nema interneta za provjeru'); break;
     case 'none': $('#updSt').textContent = '✓ Imaš najnoviju verziju'; toast('✓ Imaš najnoviju verziju'); break;
-    case 'available': $('#updSt').textContent = '⬆️ Dostupna ' + (d.tag || 'nova verzija'); showUpd(d); break;
+    case 'available': $('#updSt').textContent = '🆕 Dostupna verzija ' + (d.ver || d.tag || ''); showUpd(d); break;
     case 'downloading': updMsg('⬇️ Preuzimam ' + (d.tag || '') + '…'); updProgress(0); break;
     case 'progress': updProgress(d.pct); updMsg('⬇️ Preuzimam… ' + d.pct + '%'); break;
     case 'perm':

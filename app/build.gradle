@@ -13,7 +13,7 @@ android {
         targetSdk 34
         def vc = (project.findProperty('vc') ?: '1').toString().toInteger()
         versionCode vc
-        versionName "2.1.${vc}"
+        versionName (project.findProperty('vn') ?: "dev.${vc}").toString()
     }
 
     signingConfigs {

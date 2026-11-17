@@ -23,6 +23,7 @@ public class UpdateReceiver extends BroadcastReceiver {
         if (ACTION_STATUS.equals(a)) {
             handleStatus(c, i);
         } else if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(a) || Intent.ACTION_BOOT_COMPLETED.equals(a)) {
+            UpdateJob.schedule(c);
             if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) {
                 Updater.notify(c, "✅ #Bash Talk ažuriran", "Nova verzija " + Updater.currentName(c) + " je instalirana.",
                         Updater.openApp(c));

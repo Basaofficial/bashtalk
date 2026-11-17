@@ -145,6 +145,8 @@ public class Updater {
                 return;
             }
             JSONObject l = new JSONObject();
+            java.util.regex.Matcher vm = java.util.regex.Pattern.compile("(\\d+\\.\\d+\\.\\d+)").matcher(r.optString("name", ""));
+            l.put("ver", vm.find() ? vm.group(1) : String.valueOf(code));
             l.put("code", code);
             l.put("tag", tag);
             l.put("url", url);
@@ -163,10 +165,26 @@ public class Updater {
         }
     }
 
+    /** Provjera iz pozadinskog posla (aplikacija može biti zatvorena). */
+    static void checkNow(Context c) {
+        check(c.getApplicationContext(), false);
+    }
+
+    /** Kratko obavještenje, jednom po verziji. */
+    static void notifyNew(Context c, boolean installing) {
+        JSONObject l = latest;
+        if (l == null || ui != null) return;
+        int code = l.optInt("code");
+        if (prefs(c).getInt("notifiedCode", 0) >= code) return;
+        prefs(c).edit().putInt("notifiedCode", code).apply();
+        notify(c, "🆕 Novi update", "Verzija " + l.optString("ver") + (installing ? " · instalira se…" : " · dodirni za instalaciju"), openApp(c));
+    }
+
     /** Nova verzija postoji: automatski instaliraj ili ponudi. */
     static void offer(Context c, boolean manual) {
         if (latest == null || busy) return;
         String mode = prefs(c).getString("upd", "auto");
+        notifyNew(c, "auto".equals(mode) && !manual);
         if ("auto".equals(mode) && !manual) {
             downloadAndInstall(c);
             return;
@@ -174,9 +192,6 @@ public class Updater {
         long snooze = prefs(c).getLong("snoozeUntil", 0);
         if (!manual && System.currentTimeMillis() < snooze) return;
         emit("available");
-        if (ui == null) {
-            notify(c, "⬆️ Nova verzija #Bash Talk", "Verzija " + latest.optInt("code") + " je spremna. Dodirni za ažuriranje.", openApp(c));
-        }
     }
 
     static void snooze(Context c) {

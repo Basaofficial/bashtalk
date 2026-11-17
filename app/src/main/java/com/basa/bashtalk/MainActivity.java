@@ -96,6 +96,7 @@ public class MainActivity extends Activity implements Engine.Listener {
         startEngine();
         handleIntent(getIntent());
         watchCellGen();
+        UpdateJob.schedule(this);
     }
 
     @Override

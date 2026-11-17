@@ -19,10 +19,13 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Version
+        run: echo "VER=$(tr -d '[:space:]' < version.txt).${{ github.run_number }}" >> $GITHUB_ENV
+
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace -Pvc=${{ github.run_number }}
+          ./gradlew assembleRelease --no-daemon --stacktrace -Pvc=${{ github.run_number }} -Pvn=${{ env.VER }}
           cp app/build/outputs/apk/release/app-release.apk BashTalk.apk
 
       - uses: actions/upload-artifact@v4
@@ -35,13 +38,13 @@ jobs:
           MSG: ${{ github.event.head_commit.message }}
         run: |
           T=$(printf '%s\n' "$MSG" | head -n1 | sed -E 's/^v[0-9.]+: *//')
-          printf '🆕 Nova verzija – %s\n' "${T:-poboljšanja}" > notes.txt
+          printf '🆕 Nova verzija %s – %s\n' "$VER" "${T:-poboljšanja}" > notes.txt
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          name: "#Bash Talk v${{ github.run_number }}"
+          name: "#Bash Talk ${{ env.VER }}"
           files: BashTalk.apk
           body_path: notes.txt
           make_latest: true
