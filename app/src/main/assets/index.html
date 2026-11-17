@@ -156,6 +156,21 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
 #sheet .grab{width:40px;height:4px;border-radius:2px;background:#2a3820;margin:4px auto 14px}
 #sheet .opt{display:flex;align-items:center;gap:12px;padding:14px 8px;border-radius:14px;font-size:16px;font-weight:600}
 #sheet .opt:active,#sheet .opt.sel{background:var(--gdim);color:var(--g)}
+.seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:3px;gap:3px;margin-top:10px}
+.seg button{flex:1;background:none;border:0;border-radius:11px;padding:9px 4px;font-size:13px;font-weight:700;color:var(--mut)}
+.seg button.on{background:var(--g);color:#000;box-shadow:0 2px 10px rgba(141,255,26,.35)}
+.prog{height:8px;border-radius:99px;background:#1a2213;overflow:hidden;margin-top:12px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5fd400,#8dff1a);box-shadow:var(--glow);transition:width .3s}
+.ig{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:linear-gradient(135deg,rgba(141,255,26,.12),rgba(141,255,26,.03));border:1px solid var(--g2)}
+.ig .ic{width:44px;height:44px;border-radius:12px;background:var(--g);color:#000;display:flex;align-items:center;justify-content:center;flex:none}
+.ig .ic svg{width:26px;height:26px}
+.ig b{display:block;font-size:16px}
+.ig span{font-size:12px;color:var(--mut)}
+#upd{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:45;padding:20px}
+#upd.show{display:flex}
+#upd .box{width:100%;max-width:380px;background:#070a05;border:1px solid var(--g2);border-radius:24px;padding:22px;box-shadow:0 0 40px rgba(141,255,26,.2);animation:up .2s}
+#upd h3{font-size:20px;color:var(--g);text-shadow:var(--glow);margin-bottom:4px}
+#upd .notes{max-height:160px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5;color:var(--t);margin:12px 0;white-space:pre-wrap}
 #buzzFx{position:fixed;inset:0;pointer-events:none;z-index:60;box-shadow:inset 0 0 0 0 var(--yel)}
 #buzzFx.go{animation:bz .9s}
 @keyframes bz{0%,40%,80%{box-shadow:inset 0 0 80px 10px rgba(255,210,26,.7)}20%,60%,100%{box-shadow:inset 0 0 0 0 transparent}}
@@ -291,7 +306,30 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
         <div class="set" style="border:0;padding:0"><div class="l"><b>Mikrofon</b><span id="micSt">—</span></div><button class="btn" id="appSetBtn">Otvori</button></div>
       </div>
 
-      <div class="foot"><span class="logo">#Bash Talk</span>v2.0 · offline walkie-talkie & chat</div>
+      <div class="sec">Ažuriranja</div>
+      <div class="card">
+        <div class="set" style="border:0;padding:0">
+          <div class="l"><b>Verzija <span id="verName" style="color:var(--g)">—</span></b><span id="updSt">Provjerava se automatski kad ima interneta</span></div>
+          <button class="btn" id="updBtn">Provjeri</button>
+        </div>
+        <div class="seg" id="updSeg">
+          <button data-m="auto">⚡ Automatski</button>
+          <button data-m="ask">❓ Pitaj me</button>
+          <button data-m="off">Isključeno</button>
+        </div>
+        <div class="prog" id="updProg" style="display:none"><i></i></div>
+      </div>
+
+      <div class="sec">Kontakt</div>
+      <div class="card">
+        <div class="ig" id="igBtn">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></div>
+          <div style="flex:1"><b>@basa.gtm</b><span>Instagram · prijedlozi, greške, pitanja</span></div>
+          <span style="color:var(--g);font-size:20px">›</span>
+        </div>
+      </div>
+
+      <div class="foot"><span class="logo">#Bash Talk</span>offline walkie-talkie & chat<br>by <span style="color:var(--g)" id="igFoot">@basa.gtm</span></div>
     </section>
   </main>
 
@@ -304,6 +342,17 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
 </div>
 
 <div id="sheet"><div class="in"><div class="grab"></div><div id="sheetBody"></div></div></div>
+<div id="upd"><div class="box">
+  <h3>⬆️ Nova verzija</h3>
+  <div class="hint" style="text-align:left" id="updVer"></div>
+  <div class="notes" id="updNotes"></div>
+  <div class="prog" id="updProg2" style="display:none"><i></i></div>
+  <div class="hint" id="updMsg" style="margin-top:8px;display:none"></div>
+  <div class="row" style="margin-top:14px" id="updBtns">
+    <button class="btn" style="flex:1" id="updLater">Kasnije</button>
+    <button class="btn g" style="flex:1.4" id="updGo">Instaliraj sad</button>
+  </div>
+</div></div>
 <div id="toast"></div>
 <div id="buzzFx"></div>
 
@@ -341,6 +390,7 @@ function show(v){
 }
 $$('nav button').forEach(b => b.onclick = () => { show(b.dataset.v); A.vib && A.vib(8); });
 window.onBack = () => {
+  if ($('#upd').classList.contains('show')) { $('#upd').classList.remove('show'); return true; }
   if ($('#sheet').classList.contains('show')) { closeSheet(); return true; }
   if (view !== 'radio') { show('radio'); return true; }
   return false;
@@ -557,6 +607,55 @@ $('#appSetBtn').onclick = () => A.openAppSettings();
 function permState(){ if (st.permsOk === false) { $('#nbErr').style.display='block'; $('#nbErr').textContent = 'Nedostaju dozvole (Bluetooth / uređaji u blizini). Dodirni „Dozvole”.'; } }
 function micState(){ $('#micSt').textContent = st.micOk ? '✓ Dozvoljen' : '✕ Nije dozvoljen – potreban za walkie-talkie'; $('#micSt').style.color = st.micOk ? 'var(--g)' : 'var(--red)'; }
 
+/* ---------- ažuriranja + kontakt ---------- */
+let updInfo = null;
+$('#verName').textContent = st.version ? 'v' + st.version : '';
+function segUpd(m){ $$('#updSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === m)); }
+segUpd(st.upd || 'auto');
+$$('#updSeg button').forEach(b => b.onclick = () => {
+  A.setUpdMode(b.dataset.m); segUpd(b.dataset.m);
+  toast(b.dataset.m === 'auto' ? '⚡ Ažuriranja se instaliraju sama' : b.dataset.m === 'ask' ? '❓ Pitat ću te prije instalacije' : 'Automatska provjera isključena');
+});
+$('#updBtn').onclick = () => A.checkUpdate();
+const IG = 'https://instagram.com/basa.gtm';
+$('#igBtn').onclick = () => A.openUrl(IG);
+$('#igFoot').onclick = () => A.openUrl(IG);
+function showUpd(d){
+  if (d) updInfo = d;
+  if (!updInfo) return;
+  $('#updVer').innerHTML = `Verzija <b style="color:var(--g)">${esc(updInfo.tag || '')}</b> · ${updInfo.size ? (updInfo.size/1048576).toFixed(1) + ' MB' : ''}<br>Trenutna: v${esc(st.version || '?')}`;
+  $('#updNotes').textContent = updInfo.notes || 'Poboljšanja i ispravke.';
+  $('#updNotes').style.display = '';
+  $('#updBtns').style.display = 'flex';
+  $('#updMsg').style.display = 'none';
+  $('#upd').classList.add('show');
+}
+function updProgress(pct){
+  [$('#updProg'), $('#updProg2')].forEach(p => { p.style.display = 'block'; p.querySelector('i').style.width = pct + '%'; });
+}
+$('#updLater').onclick = () => { A.snoozeUpdate(); $('#upd').classList.remove('show'); toast('Podsjetit ću te kasnije'); };
+$('#updGo').onclick = () => { A.installUpdate(); $('#updBtns').style.display = 'none'; updMsg('Preuzimam…'); };
+function updMsg(t){ const m = $('#updMsg'); m.style.display = 'block'; m.textContent = t; $('#updSt').textContent = t; }
+window.openUpdate = () => { show('sets'); if (updInfo) showUpd(); else A.checkUpdate(); };
+function onUpdate(d){
+  switch (d.state) {
+    case 'checking': $('#updSt').textContent = 'Provjeravam…'; break;
+    case 'offline': $('#updSt').textContent = 'Nema interneta – provjerit ću kad se pojavi'; toast('📵 Nema interneta za provjeru'); break;
+    case 'none': $('#updSt').textContent = '✓ Imaš najnoviju verziju'; toast('✓ Imaš najnoviju verziju'); break;
+    case 'available': $('#updSt').textContent = '⬆️ Dostupna ' + (d.tag || 'nova verzija'); showUpd(d); break;
+    case 'downloading': updMsg('⬇️ Preuzimam ' + (d.tag || '') + '…'); updProgress(0); break;
+    case 'progress': updProgress(d.pct); updMsg('⬇️ Preuzimam… ' + d.pct + '%'); break;
+    case 'perm':
+      $('#upd').classList.add('show'); if (d.tag) showUpd(d);
+      $('#updBtns').style.display = 'flex'; $('#updGo').textContent = 'Dozvoli i instaliraj';
+      updMsg('Android traži dozvolu „Instaliraj nepoznate aplikacije” za #Bash Talk. Uključi je pa se vrati i dodirni opet.');
+      break;
+    case 'installing': updMsg('📦 Instaliram…'); updProgress(100); break;
+    case 'confirm': updMsg('Potvrdi instalaciju u prozoru koji se otvorio.'); break;
+    case 'error': updMsg('⚠️ ' + (d.msg || 'Greška')); $('#updBtns').style.display = 'flex'; $('#updGo').textContent = 'Pokušaj opet'; toast('Ažuriranje: ' + (d.msg || 'greška'), true); break;
+  }
+}
+
 /* ---------- eventi iz Androida ---------- */
 window.onEvent = function(t, d){
   switch (t) {
@@ -606,6 +705,7 @@ window.onEvent = function(t, d){
       break;
     case 'error': toast(d.msg, true); break;
     case 'nearby': nbState(d.state, d.msg, 0); break;
+    case 'update': onUpdate(d); break;
   }
 };
 
@@ -626,12 +726,14 @@ function makeDemo(){
   setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], via:['nearby','nearby','wifi'][i], talk:false})), ips:[], nearby:'on', nearbyMsg:'', links:2}), 1000);
   setTimeout(() => emit('msg', {mid:'x1', id:'a1', name:'Mirza', text:'Ima li struje na -1? 😄', ts:Date.now()}), 1500);
   return {
-    getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,auto:true,bg:false,micOk:true,permsOk:true,ips:[]}),
+    getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,auto:true,bg:false,micOk:true,permsOk:true,ips:[],upd:'auto',version:'2.1.4',build:4}),
     ready(){}, setName(){}, setChannel(){}, setGain(){}, setOption(){}, setPttTarget(){}, vib(){},
     sendChat(t){ const mid = 'd'+Date.now(); setTimeout(()=>emit('delivered',{mid,got:1,total:2}),300); setTimeout(()=>emit('delivered',{mid,got:2,total:2}),700); return mid; },
     startTalk(){ emit('tx',{on:true}); this._iv = setInterval(()=>emit('level',{v:Math.random()}),100); },
     stopTalk(){ clearInterval(this._iv); emit('tx',{on:false}); },
-    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}
+    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, setUpdMode(){}, snoozeUpdate(){}, openUrl(){}, allowInstalls(){},
+    checkUpdate(){ emit('update',{state:'available',tag:'v5',size:2100000,notes:'v2.1: auto-ažuriranja i Instagram kontakt'}); },
+    installUpdate(){ let p=0; const iv=setInterval(()=>{p+=20; emit('update',{state:'progress',pct:p,tag:'v5'}); if(p>=100){clearInterval(iv); emit('update',{state:'installing'});}},300); }
   };
 }
 })();

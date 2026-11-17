@@ -22,7 +22,7 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace -Pvc=${{ github.run_number }}
           cp app/build/outputs/apk/release/app-release.apk BashTalk.apk
 
       - uses: actions/upload-artifact@v4
@@ -36,4 +36,5 @@ jobs:
           tag_name: v${{ github.run_number }}
           name: "#Bash Talk v${{ github.run_number }}"
           files: BashTalk.apk
+          body: ${{ github.event.head_commit.message }}
           make_latest: true

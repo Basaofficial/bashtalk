@@ -96,6 +96,7 @@ public class TalkService extends Service implements Engine.Listener {
         createChannels();
         inst = this;
         engine.start();
+        updHandler.postDelayed(updTick, 60_000L);
     }
 
     @Override
@@ -124,8 +125,19 @@ public class TalkService extends Service implements Engine.Listener {
         return foreground ? START_STICKY : START_NOT_STICKY;
     }
 
+    private final android.os.Handler updHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable updTick = new Runnable() {
+        @Override
+        public void run() {
+            // provjera ažuriranja svakih 6 h, čim ima interneta
+            Updater.maybeCheck(TalkService.this, 6 * 3600_000L);
+            updHandler.postDelayed(this, 30 * 60_000L);
+        }
+    };
+
     @Override
     public void onDestroy() {
+        updHandler.removeCallbacks(updTick);
         inst = null;
         engine.stop();
         releaseLocks();
@@ -153,7 +165,13 @@ public class TalkService extends Service implements Engine.Listener {
             foreground = true;
             acquireLocks();
         } catch (Exception e) {
-            try { startForeground(NOTIF_ID, n); foreground = true; acquireLocks(); } catch (Exception ignored) { }
+            // npr. pokrenuto iz pozadine (restart) – bez mikrofona
+            try {
+                if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
+                else startForeground(NOTIF_ID, n);
+                foreground = true;
+                acquireLocks();
+            } catch (Exception ignored) { }
         }
     }
 

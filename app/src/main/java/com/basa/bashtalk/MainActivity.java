@@ -34,6 +34,7 @@ public class MainActivity extends Activity implements Engine.Listener {
     private SharedPreferences prefs;
     private volatile boolean ready, started;
     private final Handler main = new Handler(Looper.getMainLooper());
+    static volatile boolean visible;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -63,18 +64,35 @@ public class MainActivity extends Activity implements Engine.Listener {
     protected void onStart() {
         super.onStart();
         started = true;
+        visible = true;
         if (TalkService.inst == null) startEngine();
-        if (ready) TalkService.attach(this);
+        if (ready) attachAll();
     }
 
     @Override
     protected void onStop() {
         started = false;
+        visible = false;
         TalkService.detach(this);
+        if (Updater.ui == this) Updater.ui = null;
         if (!prefs.getBoolean("bg", false) && !isChangingConfigurations()) {
             stopService(new Intent(this, TalkService.class));
         }
         super.onStop();
+    }
+
+    private void attachAll() {
+        TalkService.attach(this);
+        Updater.ui = this;
+        Updater.maybeCheck(this, 30 * 60_000L);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && intent.getBooleanExtra("openUpdate", false) && ready) {
+            main.post(() -> web.evaluateJavascript("window.openUpdate && window.openUpdate()", null));
+        }
     }
 
     private void startEngine() {
@@ -175,7 +193,7 @@ public class MainActivity extends Activity implements Engine.Listener {
         @JavascriptInterface
         public void ready() {
             ready = true;
-            main.post(() -> { if (started) TalkService.attach(MainActivity.this); });
+            main.post(() -> { if (started) attachAll(); });
         }
 
         @JavascriptInterface
@@ -195,6 +213,9 @@ public class MainActivity extends Activity implements Engine.Listener {
                 o.put("ips", Engine.localIps());
                 o.put("micOk", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
                 o.put("permsOk", allGranted());
+                o.put("upd", prefs.getString("upd", "auto"));
+                o.put("version", Updater.currentName(MainActivity.this));
+                o.put("build", Updater.currentCode(MainActivity.this));
                 return o.toString();
             } catch (Exception ex) {
                 return "{}";
@@ -290,6 +311,40 @@ public class MainActivity extends Activity implements Engine.Listener {
                 if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
                 else v.vibrate(ms);
             } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
+        public void setUpdMode(String m) { prefs.edit().putString("upd", m).apply(); }
+
+        @JavascriptInterface
+        public void checkUpdate() { Updater.checkAsync(MainActivity.this, true); }
+
+        @JavascriptInterface
+        public void installUpdate() {
+            if (!Updater.canInstall(MainActivity.this)) { allowInstalls(); return; }
+            Updater.installReady(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void snoozeUpdate() { Updater.snooze(MainActivity.this); }
+
+        @JavascriptInterface
+        public void allowInstalls() {
+            main.post(() -> {
+                try {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception ex) { openAppSettings(); }
+            });
+        }
+
+        @JavascriptInterface
+        public void openUrl(String url) {
+            main.post(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception ignored) { }
+            });
         }
 
         @JavascriptInterface

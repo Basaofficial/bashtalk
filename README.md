@@ -19,3 +19,9 @@ U Postavkama uključi „Radi u pozadini” – radi i kad je ekran ugašen, a �
 ## Build
 GitHub Actions automatski pravi `BashTalk.apk` na svaki push na `main`.
 Najnoviji APK: `https://github.com/Basaofficial/bashtalk/releases/latest/download/BashTalk.apk`
+
+## Ažuriranja
+Aplikacija sama provjerava nove verzije na ovom GitHubu (kad ima interneta). U Postavkama → Ažuriranja: **Automatski**, **Pitaj me** ili **Isključeno**.
+
+## Kontakt
+Instagram: [@basa.gtm](https://instagram.com/basa.gtm)
