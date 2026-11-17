@@ -152,7 +152,7 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
     private WifiManager.MulticastLock mlock;
     private volatile NearbyLink nearby;
     private volatile String nearbyState = "off", nearbyMsg = "";
-    volatile boolean wfdEnabled = true;
+    volatile boolean wfdEnabled = false;
     private volatile WifiDirectLink wfd;
     private volatile String wfdState = "off", wfdMsg = "";
     private volatile int wfdClients;
@@ -1016,9 +1016,9 @@ public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sin
                 if (p.id.compareTo(leader) < 0) leader = p.id;
             }
             if (!any) {
-                if (w.isGo && w.clients == 0) {
+                if ((w.isGo && w.clients == 0) || w.isClient) {
                     if (wfdLonely == 0) wfdLonely = now;
-                    else if (now - wfdLonely > 90000) { w.leave(); wfdLonely = 0; }
+                    else if (now - wfdLonely > 20000) { w.leave(); wfdLonely = 0; }
                 }
             } else {
                 wfdLonely = 0;

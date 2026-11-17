@@ -35,7 +35,8 @@ public class WifiDirectLink {
     private volatile boolean on;
     volatile boolean isGo, isClient;
     volatile int clients;
-    private long lastAttempt;
+    private long lastAttempt, pauseUntil;
+    private int fails;
     private boolean registered;
 
     public WifiDirectLink(Context ctx, Sink sink) {
@@ -106,13 +107,14 @@ public class WifiDirectLink {
     public void ensureGroup() {
         if (!on || isGo || isClient) return;
         long now = System.currentTimeMillis();
-        if (now - lastAttempt < 15000) return;
+        if (now < pauseUntil || now - lastAttempt < 60000) return;
         lastAttempt = now;
         if (!wifiOn()) { sink.onWfdState("error", "Uključi Wi-Fi (ne mora biti spojen)", 0); return; }
         try {
             mgr.createGroup(ch, config(), new WifiP2pManager.ActionListener() {
                 @Override public void onSuccess() { sink.onWfdState("creating", "", 0); }
                 @Override public void onFailure(int reason) {
+                    failed();
                     if (reason == WifiP2pManager.BUSY) refresh();
                     else sink.onWfdState("error", "Grupa: kod " + reason, 0);
                 }
@@ -129,19 +131,24 @@ public class WifiDirectLink {
     public void join() {
         if (!on || isGo || isClient) return;
         long now = System.currentTimeMillis();
-        if (now - lastAttempt < 15000) return;
+        if (now < pauseUntil || now - lastAttempt < 60000) return;
         lastAttempt = now;
         if (!wifiOn()) { sink.onWfdState("error", "Uključi Wi-Fi (ne mora biti spojen)", 0); return; }
         try {
             mgr.connect(ch, config(), new WifiP2pManager.ActionListener() {
                 @Override public void onSuccess() { sink.onWfdState("joining", "", 0); }
-                @Override public void onFailure(int reason) { sink.onWfdState("idle", "Spajanje: kod " + reason, 0); }
+                @Override public void onFailure(int reason) { failed(); sink.onWfdState("idle", "Spajanje: kod " + reason, 0); }
             });
         } catch (SecurityException se) {
             sink.onWfdState("error", "Nedostaje dozvola za uređaje u blizini", 0);
         } catch (Exception e) {
             sink.onWfdState("error", e.getMessage(), 0);
         }
+    }
+
+    /** Nakon 3 neuspjeha pauza 10 min – da ne iskaču sistemski prozori. */
+    private void failed() {
+        if (++fails >= 3) { fails = 0; pauseUntil = System.currentTimeMillis() + 10 * 60_000L; }
     }
 
     /** Raspusti grupu (npr. nema nikoga). */
@@ -163,6 +170,7 @@ public class WifiDirectLink {
         isGo = ours && g.isGroupOwner();
         isClient = ours && !g.isGroupOwner();
         clients = isGo ? g.getClientList().size() : 0;
+        if (isGo || isClient) fails = 0;
         if (isGo) sink.onWfdState("go", "", clients);
         else if (isClient) sink.onWfdState("client", "", 0);
         else sink.onWfdState("idle", "", 0);

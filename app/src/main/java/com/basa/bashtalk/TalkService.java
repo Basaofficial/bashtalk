@@ -116,7 +116,11 @@ public class TalkService extends Service implements Engine.Listener, SensorHub.S
         engine.gain = prefs.getFloat("gain", 1.5f);
         engine.sounds = prefs.getBoolean("sounds", true);
         engine.auto = prefs.getBoolean("auto", true);
-        engine.wfdEnabled = prefs.getBoolean("wfd", true);
+        if (!prefs.getBoolean("wfdMig1", false)) {
+            // Wi-Fi Direct je sad isključen po defaultu (Samsung iskače s upozorenjima)
+            prefs.edit().putBoolean("wfd", false).putBoolean("wfdMig1", true).apply();
+        }
+        engine.wfdEnabled = prefs.getBoolean("wfd", false);
         engine.mesh = prefs.getBoolean("mesh", true);
         engine.headsetMic = prefs.getBoolean("hsPtt", false);
         createChannels();

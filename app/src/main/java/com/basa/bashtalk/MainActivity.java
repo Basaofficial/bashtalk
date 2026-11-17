@@ -401,9 +401,9 @@ public class MainActivity extends Activity implements Engine.Listener {
                 o.put("name", e != null ? e.name : prefs.getString("name", Build.MODEL));
                 o.put("ch", prefs.getInt("ch", 1));
                 o.put("gain", prefs.getFloat("gain", 1.5f));
-                for (String k : new String[]{"sounds", "keepOn", "volPtt", "vib", "auto", "wfd", "mesh", "web"})
+                for (String k : new String[]{"sounds", "keepOn", "volPtt", "vib", "auto", "mesh", "web"})
                     o.put(k, prefs.getBoolean(k, true));
-                for (String k : new String[]{"bg", "fall", "hsPtt"})
+                for (String k : new String[]{"bg", "fall", "hsPtt", "wfd"})
                     o.put(k, prefs.getBoolean(k, false));
                 o.put("ips", Engine.localIps());
                 o.put("micOk", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
