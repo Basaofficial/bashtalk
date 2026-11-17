@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.basa.bashtalk'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.basa.bashtalk'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        bash {
+            storeFile file('bashtalk.jks')
+            storePassword 'bashtalk123'
+            keyAlias 'bashtalk'
+            keyPassword 'bashtalk123'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.bash
+        }
+        debug {
+            signingConfig signingConfigs.bash
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
