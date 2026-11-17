@@ -183,6 +183,43 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
 #find .hot{font-size:15px;font-weight:700;margin-top:8px}
 #find .close{position:absolute;top:18px;right:18px}
 .tagd{display:inline-block;background:var(--gdim);color:var(--g);border-radius:8px;padding:1px 6px;font-weight:800;font-size:11px;margin-left:4px}
+.sosBtn{background:linear-gradient(135deg,#ff3b4e,#a3001a);color:#fff;border:0;border-radius:14px;padding:10px 14px;font-weight:900;letter-spacing:1px;position:relative;overflow:hidden;touch-action:none}
+.sosBtn i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.35)}
+.m img{max-width:220px;max-height:260px;border-radius:12px;display:block;margin-top:2px}
+.vn{display:flex;align-items:center;gap:8px;min-width:160px}
+.vn button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.25);color:inherit;font-size:14px}
+.m:not(.me) .vn button{background:var(--gdim);color:var(--g)}
+.vn .wv{flex:1;height:4px;border-radius:2px;background:rgba(0,0,0,.2);overflow:hidden}
+.m:not(.me) .vn .wv{background:#26331b}
+.vn .wv i{display:block;height:100%;width:0;background:currentColor}
+.compose .ic{width:46px;height:46px;border-radius:50%;padding:0;font-size:19px;flex:none}
+#recBtn.rec{background:var(--red);border-color:var(--red);color:#fff;animation:pulse 1s infinite}
+#recBar{display:none;align-items:center;gap:10px;padding:8px 14px;background:#200006;border-top:1px solid #4a0010;color:#ff8a95;font-weight:700;font-size:13px}
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:47}
+#viewer.show{display:flex}
+#viewer img{max-width:100%;max-height:100%}
+#sosIn{position:fixed;inset:0;background:radial-gradient(circle,#5a0010,#1a0004 70%);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:48;padding:24px;text-align:center;animation:sbg 1s infinite}
+#sosIn.show{display:flex}
+@keyframes sbg{50%{background:radial-gradient(circle,#8a0018,#2a0006 70%)}}
+#sosIn h1{font-size:56px;font-weight:900;color:#fff;letter-spacing:4px;text-shadow:0 0 30px #ff3b4e}
+#sosIn .who{font-size:24px;font-weight:800;color:#fff;margin-top:6px}
+#sosIn .why{color:#ffb3ba;margin-top:6px}
+#sosIn .acks{color:#b6ff7a;margin-top:12px;font-weight:700;min-height:20px}
+#sosIn .row{max-width:340px;margin-top:22px}
+#mySos{display:none;background:#3a0008;border-bottom:2px solid var(--red);padding:10px 14px;align-items:center;gap:10px;font-weight:800;color:#fff;animation:sbg 1s infinite}
+#mySos.show{display:flex}
+#fallOv{position:fixed;inset:0;background:#1d1600;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:49;padding:24px;text-align:center}
+#fallOv.show{display:flex}
+#fallOv .n{font-size:110px;font-weight:900;color:var(--yel);line-height:1;text-shadow:0 0 30px rgba(255,210,26,.6)}
+.task{display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:8px}
+.task.done{opacity:.55}
+.task.done .tt{text-decoration:line-through}
+.task .ck{width:26px;height:26px;border-radius:8px;border:2px solid var(--g2);flex:none;display:flex;align-items:center;justify-content:center;color:#000;font-weight:900}
+.task.done .ck{background:var(--g);border-color:var(--g)}
+.task .tt{flex:1;min-width:0;font-size:15px;word-wrap:break-word}
+.task .tm{font-size:11px;color:var(--mut);margin-top:2px}
+.tagf{display:inline-block;background:#1b1a06;color:var(--yel);border-radius:8px;padding:1px 6px;font-weight:800;font-size:11px;margin-left:4px}
+.hist{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--line)}
 #buzzFx{position:fixed;inset:0;pointer-events:none;z-index:60;box-shadow:inset 0 0 0 0 var(--yel)}
 #buzzFx.go{animation:bz .9s}
 @keyframes bz{0%,40%,80%{box-shadow:inset 0 0 80px 10px rgba(255,210,26,.7)}20%,60%,100%{box-shadow:inset 0 0 0 0 transparent}}
@@ -197,6 +234,7 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
     <div class="pill" id="hdrCh">K<span class="ch" id="hdrChN">1</span></div>
   </header>
 
+  <div id="mySos"><span style="flex:1">🆘 Tvoj SOS je aktivan – svi u blizini ga vide</span><button class="btn" id="mySosOff" style="background:#fff;color:#a3001a;border:0">Prekini</button></div>
   <main>
     <!-- RADIO -->
     <section class="view act" id="radio">
@@ -229,6 +267,10 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
             <button class="btn sq" id="chPlus">+</button>
           </div>
         </div>
+        <div class="row">
+          <button class="sosBtn" id="sosBtn" style="flex:1"><i></i>🆘 SOS · drži 2 s</button>
+          <button class="btn" id="histBtn" style="flex:1">🕘 Historija</button>
+        </div>
         <div class="hint">Možeš držati i <b>tipku za smanjenje glasnoće</b>. 🔒 = pričaš bez držanja.</div>
       </div>
     </section>
@@ -237,10 +279,24 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
     <section class="view" id="chat">
       <div id="msgs"></div>
       <div id="to">🔒 Privatno: <b id="toName"></b><button id="toX">✕</button></div>
+      <div id="recBar"><span>⏺</span><span id="recT">0:00</span><span style="flex:1">Snimam… pusti za slanje, povuci lijevo za brisanje</span></div>
       <div class="compose">
+        <button class="btn ic" id="attBtn">📎</button>
         <input id="inp" placeholder="Poruka…" maxlength="1000" autocomplete="off">
+        <button class="btn ic" id="recBtn">🎤</button>
         <button class="btn g" id="send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
       </div>
+    </section>
+
+    <!-- TASKS -->
+    <section class="view" id="tasks">
+      <div class="sec">Zadaci na gradilištu</div>
+      <div class="row" style="margin-bottom:12px">
+        <input class="tin" id="taskInp" placeholder="Novi zadatak…" maxlength="200" style="margin:0;flex:1">
+        <button class="btn g" id="taskAdd" style="height:46px">＋</button>
+      </div>
+      <div id="taskList"></div>
+      <div class="hint" style="margin-top:10px">Lista se dijeli sa svima u blizini i sinhronizuje čim se sretnete.</div>
     </section>
 
     <!-- DEVICES -->
@@ -280,6 +336,15 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
         <div class="set" style="border:0;padding-bottom:0"><div class="l"><b id="uwbTitle">📍 UWB radar</b><span id="uwbSub">Tačna udaljenost i smjer do drugih telefona s UWB-om</span></div></div>
       </div>
 
+      <div class="sec">🍏 iPhone i drugi bez aplikacije</div>
+      <div class="card" id="webCard">
+        <div class="steps">
+          <div><span>Na iPhoneu se spoji na Wi-Fi <b id="wSsid" class="ips">—</b>, šifra <b id="wPass" class="ips">—</b> (ili na tvoj hotspot).</span></div>
+          <div><span>U Safariju otvori <b id="wUrl" class="ips">—</b></span></div>
+          <div><span>Dobije chat, slike i <b>sluša</b> walkie-talkie. Pričati može samo pisanjem (Safari ne da mikrofon bez interneta).</span></div>
+        </div>
+      </div>
+
       <div class="sec">Ili preko hotspota</div>
       <div class="card">
         <div class="hint" style="text-align:left">Za veći domet: jedan telefon upali hotspot, ostali se spoje na njega. Radi i na Wi-Fi ruteru bez interneta.</div>
@@ -297,6 +362,26 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
       <div class="card">
         <label style="font-size:12px;color:var(--mut);font-weight:700">NADIMAK</label>
         <input class="tin" id="nameInp" maxlength="24">
+      </div>
+
+      <div class="sec">Sigurnost i mreža</div>
+      <div class="card">
+        <div class="set"><div class="l"><b>🔁 Mesh (repetitor)</b><span>Poruke i glas preskaču preko telefona u sredini – veći domet</span></div><div class="tg" data-k="mesh"></div></div>
+        <div class="set"><div class="l"><b>⚠️ Detekcija pada</b><span>Pad + bez pokreta 8 s → 30 s odbrojavanje → automatski SOS</span></div><div class="tg" data-k="fall"></div></div>
+        <div class="set"><div class="l"><b>🎧 Dugme na slušalicama</b><span>Klik = počni / završi pričanje (i mikrofon slušalica)</span></div><div class="tg" data-k="hsPtt"></div></div>
+        <div class="set"><div class="l"><b>🍏 iPhone / web pristup</b><span>Drugi uređaji otvore stranicu u pregledniku – vidi Uređaje</span></div><div class="tg" data-k="web"></div></div>
+      </div>
+
+      <div class="sec">Sprat (barometar)</div>
+      <div class="card">
+        <div class="l" style="margin-bottom:10px"><b>Na kojem si spratu sada?</b> <span id="flNow" style="color:var(--g);float:right;font-weight:800">—</span></div>
+        <div class="row">
+          <button class="btn sq" id="flMinus">−</button>
+          <div style="flex:1;text-align:center;font-size:22px;font-weight:900;color:var(--g)" id="flSel">0</div>
+          <button class="btn sq" id="flPlus">+</button>
+          <button class="btn g" id="flSet">Postavi</button>
+        </div>
+        <div class="hint" style="margin-top:10px" id="flHint">Postavi jednom (npr. -1 u podrumu), dalje telefon sam prati sprat i pokazuje ga drugima.</div>
       </div>
 
       <div class="sec">Pozadina</div>
@@ -354,6 +439,7 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
   <nav>
     <button class="act" data-v="radio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="14" height="15" rx="3"/><path d="M9 7 7 2M9 12h6M9 16h6"/></svg>Radio</button>
     <button data-v="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Chat<span class="badge" id="chatBadge"></span></button>
+    <button data-v="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Zadaci<span class="badge" id="taskBadge"></span></button>
     <button data-v="devs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.5M7.8 16.2a6 6 0 0 1 0-8.5M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/></svg>Uređaji<span class="badge" id="devBadge"></span></button>
     <button data-v="sets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Postavke</button>
   </nav>
@@ -382,6 +468,28 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
     <button class="btn" style="flex:1" id="findBuzz">📳 Zovni</button>
     <button class="btn g" style="flex:1" id="findTalk">🎙️ Pričaj</button>
   </div>
+</div>
+<div id="viewer"><img id="viewImg"></div>
+<div id="sosIn">
+  <h1>SOS</h1>
+  <div class="who" id="sosWho">—</div>
+  <div class="why" id="sosWhy"></div>
+  <div class="acks" id="sosAcks"></div>
+  <div class="row">
+    <button class="btn" style="flex:1" id="sosMute">🔇 Utišaj</button>
+    <button class="btn g" style="flex:1.3" id="sosGo">🏃 Idem!</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn" style="flex:1" id="sosFind">📍 Strelica do njega</button>
+    <button class="btn" style="flex:1" id="sosClose">Zatvori</button>
+  </div>
+</div>
+<div id="fallOv">
+  <div style="font-size:22px;font-weight:900;color:var(--yel)">⚠️ Pad detektovan</div>
+  <div class="hint" style="margin:8px 0 18px">Ako ne odgovoriš, šaljem SOS svima u blizini</div>
+  <div class="n" id="fallN">30</div>
+  <button class="btn g" id="fallOk" style="margin-top:26px;padding:18px 40px;font-size:20px">✅ Dobro sam</button>
+  <button class="btn" id="fallSos" style="margin-top:12px">🆘 Pošalji SOS odmah</button>
 </div>
 <div id="toast"></div>
 <div id="buzzFx"></div>
@@ -420,6 +528,8 @@ function show(v){
 }
 $$('nav button').forEach(b => b.onclick = () => { show(b.dataset.v); A.vib && A.vib(8); });
 window.onBack = () => {
+  if ($('#viewer').classList.contains('show')) { $('#viewer').classList.remove('show'); return true; }
+  if ($('#sosIn').classList.contains('show')) { $('#sosIn').classList.remove('show'); return true; }
   if ($('#find').classList.contains('show')) { findId=''; $('#find').classList.remove('show'); return true; }
   if ($('#upd').classList.contains('show')) { $('#upd').classList.remove('show'); return true; }
   if ($('#sheet').classList.contains('show')) { closeSheet(); return true; }
@@ -527,8 +637,29 @@ function msgHtml(m){
   const pv = m.to ? (me ? `🔒 → ${esc(m.toName||'')}` : '🔒 privatno') : '';
   return `<div class="m ${me?'me':''} ${m.to?'pv':''}" id="m_${esc(m.mid||'')}">`
     + (me ? (pv?`<div class="n" style="color:#1d4a00">${pv}</div>`:'') : `<div class="n">${esc(m.name)} ${pv}</div>`)
-    + `<div class="x">${esc(m.text)}</div><div class="tm">${hm(m.ts)}${tick}</div></div>`;
+    + bodyHtml(m) + `<div class="tm">${hm(m.ts)}${tick}</div></div>`;
 }
+function bodyHtml(m){
+  if (m.kind === 'img') return `<img src="${esc(m.url)}" data-view="${esc(m.url)}">`;
+  if (m.kind === 'voice') return `<div class="vn" data-au="${esc(m.url)}"><button>▶</button><div class="wv"><i></i></div><span style="font-size:12px;font-weight:700">${m.dur ? m.dur.toFixed(1) + ' s' : ''}</span></div>`;
+  return `<div class="x">${esc(m.text)}</div>`;
+}
+let curAu = null;
+document.addEventListener('click', e => {
+  const v = e.target.closest('[data-view]');
+  if (v) { $('#viewImg').src = v.dataset.view; $('#viewer').classList.add('show'); return; }
+  const a = e.target.closest('[data-au]');
+  if (a) {
+    if (curAu && curAu.el === a) { curAu.au.pause(); curAu.el.querySelector('button').textContent = '▶'; curAu = null; return; }
+    if (curAu) { curAu.au.pause(); curAu.el.querySelector('button').textContent = '▶'; }
+    const au = new Audio(a.dataset.au); const bar = a.querySelector('.wv i');
+    curAu = {au, el:a}; a.querySelector('button').textContent = '⏸';
+    au.ontimeupdate = () => { bar.style.width = (au.currentTime / (au.duration || 1) * 100) + '%'; };
+    au.onended = () => { a.querySelector('button').textContent = '▶'; bar.style.width = '0'; curAu = null; };
+    au.play().catch(() => toast('Ne mogu pustiti zvuk', true));
+  }
+});
+$('#viewer').onclick = () => $('#viewer').classList.remove('show');
 function addMsg(m){
   msgs.push(m); saveMsgs();
   const box = $('#msgs');
@@ -545,6 +676,27 @@ function send(){
   i.value = ''; i.focus();
 }
 $('#send').onclick = send;
+$('#attBtn').onclick = () => openSheet(`<div class="opt" data-c="1">📸 Slikaj kamerom</div><div class="opt" data-c="0">🖼️ Iz galerije</div>`,
+  el => A.pickImage(el.dataset.c === '1', chatTo));
+let recOn = false, recStart = 0, recIv = 0, recX = 0, recCancel = false;
+const recBtn = $('#recBtn');
+recBtn.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (!A.startNote()) { toast('Mikrofon nije dostupan', true); return; }
+  recOn = true; recCancel = false; recStart = Date.now(); recX = e.clientX;
+  recBtn.classList.add('rec'); $('#recBar').style.display = 'flex';
+  recIv = setInterval(() => { const s = Math.floor((Date.now() - recStart) / 1000); $('#recT').textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); if (s >= 60) recEnd(); }, 250);
+});
+recBtn.addEventListener('pointermove', e => { if (recOn && recX - e.clientX > 80) { recCancel = true; $('#recBar').style.opacity = .5; } });
+function recEnd(){
+  if (!recOn) return; recOn = false; clearInterval(recIv);
+  recBtn.classList.remove('rec'); $('#recBar').style.display = 'none'; $('#recBar').style.opacity = 1;
+  let r = {}; try { r = JSON.parse(A.stopNote(recCancel, chatTo)); } catch(e){}
+  if (recCancel) { toast('🗑️ Snimak obrisan'); return; }
+  if (!r.mid) { toast('Prekratko – drži duže'); return; }
+  addMsg({mid:r.mid, mine:1, kind:'voice', url:r.url, dur:r.dur, ts:Date.now(), to:chatTo, toName: chatTo ? nameOf(chatTo) : '', got:0, total: chatTo ? 1 : peersOnCh().length});
+}
+['pointerup','pointercancel','pointerleave'].forEach(ev => recBtn.addEventListener(ev, recEnd));
 $('#inp').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
 function setChatTo(id){
   chatTo = id;
@@ -571,13 +723,15 @@ function renderPeers(){
   else L.innerHTML = peers.map(p => {
     const fresh = p.age < 3500;
     const same = p.ch === st.ch;
+    const remote = p.via === 'mesh';
+    const flTag = p.fl !== undefined ? '<span class="tagf">🏢 ' + p.fl + '</span>' : (p.dFl !== undefined ? '<span class="tagf">' + (p.dFl === 0 ? '≈ isti sprat' : (p.dFl > 0 ? '▲ ' + p.dFl : '▼ ' + (-p.dFl)) + ' sprat') + '</span>' : '');
     return `<div class="peer ${p.talk?'talk':''}">
       <div class="av">${esc(initials(p.name))}<span class="dot ${fresh?'on':'mid'}"></span></div>
       <div class="pi" data-find="${esc(p.id)}"><b>${esc(p.name)}${p.talk?' 🎙️':''}</b>
-        <span>${same?'<span style="color:var(--g)">● K'+p.ch+'</span>':'K'+p.ch} · ${p.via==='nearby'?'🔵':p.via==='wfd'?'⚡':'📶'}${p.rtt>0?' · '+p.rtt+' ms':''}${p.d>=0?'<span class="tagd">📍 '+fmtD(p.d)+'</span>':''}</span></div>
+        <span>${same?'<span style="color:var(--g)">● K'+p.ch+'</span>':'K'+p.ch} · ${remote?'🔁 '+p.hops+' skoka preko '+esc(p.viaName||'?'):(p.via==='nearby'?'🔵':p.via==='wfd'?'⚡':'📶')}${p.rtt>0?' · '+p.rtt+' ms':''}${p.d>=0?'<span class="tagd">📍 '+fmtD(p.d)+'</span>':''}${flTag}</span></div>
       ${bars(p.rtt,p.age)}
       <div class="pa">
-        <button class="btn sq" data-a="talk" data-id="${esc(p.id)}" title="Pričaj samo njemu">🎙️</button>
+        ${remote ? '' : `<button class="btn sq" data-a="talk" data-id="${esc(p.id)}" title="Pričaj samo njemu">🎙️</button>`}
         <button class="btn sq" data-a="msg" data-id="${esc(p.id)}" title="Privatna poruka">💬</button>
         <button class="btn sq" data-a="buzz" data-id="${esc(p.id)}" title="Zovni (vibracija)">📳</button>
       </div></div>`;
@@ -739,6 +893,94 @@ function onUpdate(d){
   }
 }
 
+/* ---------- SOS ---------- */
+let sosHold = 0, sosT = 0, sosFrom = '', sosAcks = {};
+const sosBtn = $('#sosBtn');
+sosBtn.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (st.sos) { A.sos(false, ''); return; }
+  const bar = sosBtn.querySelector('i'); sosHold = Date.now();
+  bar.style.transition = 'width 2s linear'; bar.style.width = '100%';
+  sosT = setTimeout(() => { A.sos(true, ''); A.vib(400); bar.style.transition = 'none'; bar.style.width = '0'; }, 2000);
+});
+['pointerup','pointercancel','pointerleave'].forEach(ev => sosBtn.addEventListener(ev, () => { clearTimeout(sosT); const b = sosBtn.querySelector('i'); b.style.transition = 'none'; b.style.width = '0'; }));
+$('#mySosOff').onclick = () => A.sos(false, '');
+function setMySos(on){
+  st.sos = on; $('#mySos').classList.toggle('show', on);
+  sosBtn.innerHTML = on ? '<i></i>⏹ Prekini SOS' : '<i></i>🆘 SOS · drži 2 s';
+}
+function showSos(d){
+  sosFrom = d.id; sosAcks[d.id] = sosAcks[d.id] || [];
+  $('#sosWho').textContent = d.name + (d.fl !== undefined ? ' · 🏢 sprat ' + d.fl : '');
+  $('#sosWhy').textContent = d.reason || 'Treba pomoć!';
+  $('#sosAcks').textContent = sosAcks[d.id].length ? '🏃 Idu: ' + sosAcks[d.id].join(', ') : '';
+  $('#sosIn').classList.add('show');
+}
+window.openSos = () => { try { const l = JSON.parse(A.sosList()); if (l.length) showSos(l[0]); } catch(e){} };
+$('#sosMute').onclick = () => A.muteSiren();
+$('#sosGo').onclick = () => { A.sosAck(sosFrom); toast('🏃 Javio si da ideš'); $('#sosGo').textContent = '✓ Javljeno'; };
+$('#sosFind').onclick = () => { $('#sosIn').classList.remove('show'); openFind(sosFrom); };
+$('#sosClose').onclick = () => $('#sosIn').classList.remove('show');
+
+/* ---------- pad ---------- */
+$('#fallOk').onclick = () => A.fallOk();
+$('#fallSos').onclick = () => { A.fallOk(); A.sos(true, 'Pad'); };
+
+/* ---------- historija ---------- */
+$('#histBtn').onclick = () => {
+  let l = []; try { l = JSON.parse(A.getHistory()).list || []; } catch(e){}
+  let h = '<div style="font-weight:800;margin:0 4px 8px">🕘 Zadnjih 10 primljenih</div>';
+  if (!l.length) h += '<div class="hint" style="padding:14px">Još ništa. Ovdje se čuva zadnjih 10 poruka koje si čuo preko walkie-talkieja.</div>';
+  l.forEach(x => h += `<div class="hist"><div class="vn" data-au="${esc(x.url)}" style="flex:1"><button>▶</button><div style="flex:1"><b>${esc(x.name)}</b><div style="font-size:11px;color:var(--mut)">${hm(x.ts)} · ${x.dur} s${x.priv?' · 🔒':''}</div><div class="wv" style="margin-top:4px"><i></i></div></div></div></div>`);
+  $('#sheetBody').innerHTML = h; $('#sheet').classList.add('show');
+};
+
+/* ---------- zadaci ---------- */
+let tasks = [];
+function loadTasks(){ try { tasks = JSON.parse(A.getTasks()).list || []; } catch(e){ tasks = []; } renderTasks(); }
+function renderTasks(){
+  tasks.sort((a,b) => (a.done - b.done) || (b.created||0) - (a.created||0));
+  const open = tasks.filter(t => !t.done).length;
+  const tb = $('#taskBadge'); tb.textContent = open; tb.style.display = open ? 'flex' : 'none';
+  const L = $('#taskList');
+  if (!tasks.length) { L.innerHTML = '<div class="card empty" style="margin:0"><div class="e">✅</div>Nema zadataka.<br><span style="font-size:12px">Dodaj prvi – vidjet će ga svi u blizini.</span></div>'; return; }
+  L.innerHTML = tasks.map(t => `<div class="task ${t.done?'done':''}">
+    <div class="ck" data-tk="done" data-tid="${esc(t.tid)}">${t.done?'✓':''}</div>
+    <div style="flex:1;min-width:0"><div class="tt">${esc(t.text)}</div>
+      <div class="tm">${t.who ? '👷 ' + esc(t.who) + ' · ' : ''}dodao ${esc(t.by||'?')}${t.done && t.editBy ? ' · završio ' + esc(t.editBy) : ''}</div></div>
+    ${t.done ? '' : `<button class="btn" style="padding:6px 9px;font-size:12px" data-tk="take" data-tid="${esc(t.tid)}">${t.who === st.name ? 'Pusti' : 'Preuzmi'}</button>`}
+    <button class="btn sq" style="width:32px;height:32px;font-size:14px" data-tk="del" data-tid="${esc(t.tid)}">✕</button></div>`).join('');
+  $$('#taskList [data-tk]').forEach(b => b.onclick = () => {
+    const t = tasks.find(x => x.tid === b.dataset.tid); if (!t) return;
+    const c = Object.assign({}, t);
+    if (b.dataset.tk === 'done') c.done = !t.done;
+    if (b.dataset.tk === 'take') c.who = t.who === st.name ? '' : st.name;
+    if (b.dataset.tk === 'del') { if (!confirmDel(t)) return; c.del = true; }
+    A.saveTask(JSON.stringify(c)); A.vib(15);
+  });
+}
+let delArm = '';
+function confirmDel(t){ if (delArm === t.tid) { delArm = ''; return true; } delArm = t.tid; toast('Dodirni ✕ još jednom za brisanje'); setTimeout(() => delArm = '', 2500); return false; }
+function addTask(){ const i = $('#taskInp'); const t = i.value.trim(); if (!t) return; A.saveTask(JSON.stringify({text:t, done:false})); i.value = ''; }
+$('#taskAdd').onclick = addTask;
+$('#taskInp').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+
+/* ---------- sprat ---------- */
+let flSel = st.flRef !== undefined ? st.flRef : 0;
+$('#flSel').textContent = flSel;
+$('#flMinus').onclick = () => { flSel--; $('#flSel').textContent = flSel; };
+$('#flPlus').onclick = () => { flSel++; $('#flSel').textContent = flSel; };
+$('#flSet').onclick = () => { if (A.setFloor(flSel)) toast('🏢 Sprat postavljen: ' + flSel); else toast('Barometar još nije spreman ili ga telefon nema', true); };
+if (st.hasBaro === false) $('#flHint').textContent = 'Ovaj telefon nema barometar – sprat se ne može pratiti.';
+
+/* ---------- iPhone kartica ---------- */
+function webCard(ips){
+  $('#wSsid').textContent = st.wfdSsid || '—'; $('#wPass').textContent = st.wfdPass || '—';
+  const ip = (ips || []).map(x => x.ip).find(ip => ip.startsWith('192.168.49.')) || ((ips || [])[0] || {}).ip;
+  $('#wUrl').textContent = ip ? `http://${ip}:${st.webPort || 8080}` : 'čeka Wi-Fi / Wi-Fi Direct…';
+  $('#webCard').style.opacity = st.web === false ? .4 : 1;
+}
+
 /* ---------- eventi iz Androida ---------- */
 window.onEvent = function(t, d){
   switch (t) {
@@ -748,6 +990,8 @@ window.onEvent = function(t, d){
       if (d.nearby) nbState(d.nearby, d.nearbyMsg, d.links);
       if (d.wfd) wfdState(d.wfd, d.wfdMsg, d.wfdClients);
       if (d.uwbSt) uwbState(d.uwbSt, d.uwbMsg);
+      if (d.ips) webCard(d.ips);
+      $('#flNow').textContent = d.myFl !== undefined ? '🏢 ' + d.myFl : (d.myP ? Math.round(d.myP) + ' hPa' : '—');
       updFind();
       renderPeers();
       break;
@@ -792,6 +1036,32 @@ window.onEvent = function(t, d){
     case 'error': toast(d.msg, true); break;
     case 'nearby': nbState(d.state, d.msg, 0); break;
     case 'update': onUpdate(d); break;
+    case 'media':
+      addMsg({mid:d.mid, name:d.name, from:d.id, kind:d.kind, url:d.url, dur:(d.meta||{}).dur, ts:d.ts || Date.now(), to:d.to || ''});
+      if (view !== 'chat') { unread++; badge(); toast((d.kind === 'img' ? '📷 ' : '🎤 ') + d.name); }
+      break;
+    case 'ownMedia':
+      addMsg({mid:d.mid, mine:1, kind:d.kind, url:d.url, ts:Date.now(), to:d.to||'', toName: d.to ? nameOf(d.to) : '', got:0, total: d.to ? 1 : peersOnCh().length});
+      break;
+    case 'sos': showSos(d); sysMsg('🆘 SOS od ' + d.name + (d.reason ? ' – ' + d.reason : ''), 0); break;
+    case 'sosOff':
+      if (sosFrom === d.id) $('#sosIn').classList.remove('show');
+      sysMsg('✅ ' + d.name + ' je prekinuo SOS', 1); delete sosAcks[d.id];
+      break;
+    case 'sosack': {
+      const f = d['for'];
+      (sosAcks[f] = sosAcks[f] || []).push(d.name);
+      if (f === st.id) toast('🏃 ' + d.name + ' ide u pomoć!');
+      if (sosFrom === f) $('#sosAcks').textContent = '🏃 Idu: ' + sosAcks[f].join(', ');
+      break;
+    }
+    case 'mySos': setMySos(d.on); break;
+    case 'fall':
+      $('#fallOv').classList.toggle('show', d.left >= 0);
+      $('#fallN').textContent = Math.max(0, d.left);
+      break;
+    case 'tasks': tasks = d.list || []; renderTasks(); break;
+    case 'hist': break;
     case 'uwb': uwbState(d.state, d.msg); break;
     case 'range': {
       const p = peers.find(x => x.id === d.id);
@@ -808,6 +1078,9 @@ micState();
 permState();
 renderMsgs();
 renderPeers();
+loadTasks();
+setMySos(!!st.sos);
+webCard(st.ips);
 A.ready();
 setInterval(() => { try { const s = JSON.parse(A.getState()); if (s.micOk !== st.micOk) { st.micOk = s.micOk; micState(); } st.permsOk = s.permsOk; } catch(e){} }, 3000);
 
@@ -816,15 +1089,17 @@ function makeDemo(){
   const ppl = [{id:'a1',name:'Mirza',ch:1},{id:'b2',name:'Kemo',ch:1},{id:'c3',name:'Ivan Montaža',ch:2}];
   let t0 = Date.now();
   const emit = (t,d) => setTimeout(() => window.onEvent && window.onEvent(t,d), 0);
-  setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], via:['wfd','nearby','wifi'][i], uwb:i<2, d:[3.4,11.8,-1][i], az:[25,-60,undefined][i], talk:false})), ips:[], nearby:'on', nearbyMsg:'', links:2, wfd:'go', wfdClients:1, uwbSt:'on'}), 1000);
+  setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], via:['wfd','nearby','mesh'][i], hops:[1,1,2][i], viaName:'Kemo', fl:[-1,undefined,0][i], dFl:[undefined,-1,undefined][i], uwb:i<2, d:[3.4,11.8,-1][i], az:[25,-60,undefined][i], talk:false})), ips:[{ip:'192.168.49.1'}], nearby:'on', nearbyMsg:'', links:2, wfd:'go', wfdClients:1, uwbSt:'on', myFl:-1}), 1000);
   setTimeout(() => emit('msg', {mid:'x1', id:'a1', name:'Mirza', text:'Ima li struje na -1? 😄', ts:Date.now()}), 1500);
   return {
-    getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,auto:true,bg:false,micOk:true,permsOk:true,ips:[],upd:'auto',version:'2.1.4',build:4}),
+    getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,wfdSsid:'DIRECT-bt-BashTalk',wfdPass:'BashTalk-1332-wd',webPort:8080,mesh:true,fall:false,hsPtt:false,web:true,hasBaro:true,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,auto:true,bg:false,micOk:true,permsOk:true,ips:[],upd:'auto',version:'2.1.4',build:4}),
     ready(){}, setName(){}, setChannel(){}, setGain(){}, setOption(){}, setPttTarget(){}, vib(){},
     sendChat(t){ const mid = 'd'+Date.now(); setTimeout(()=>emit('delivered',{mid,got:1,total:2}),300); setTimeout(()=>emit('delivered',{mid,got:2,total:2}),700); return mid; },
     startTalk(){ emit('tx',{on:true}); this._iv = setInterval(()=>emit('level',{v:Math.random()}),100); },
     stopTalk(){ clearInterval(this._iv); emit('tx',{on:false}); },
-    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, setUpdMode(){}, snoozeUpdate(){}, openUrl(){}, allowInstalls(){},
+    buzz(){}, openHotspot(){}, openWifi(){}, openAppSettings(){}, openBluetooth(){}, askPerms(){}, batteryOpt(){}, openLocation(){}, pickImage(){}, startNote(){return true;}, stopNote(){return JSON.stringify({mid:'v'+Date.now(),url:'',dur:3.2});},
+    sos(on){ emit('mySos',{on}); }, sosAck(){}, muteSiren(){}, sosList(){return '[]';}, fallOk(){ emit('fall',{left:-1}); }, getHistory(){ return JSON.stringify({list:[{name:'Mirza',ts:Date.now()-60000,dur:4.2,url:''}]}); },
+    getTasks(){ return JSON.stringify({list:[{tid:'t1',text:'Montirati FI u ormaru -1',by:'Mirza',who:'Basa',done:false,created:1},{tid:'t2',text:'Kabel NYM 5x2.5 do garaže',by:'Basa',done:true,editBy:'Kemo',created:2}]}); }, saveTask(){}, setFloor(){return true;}, clearFloor(){}, setUpdMode(){}, snoozeUpdate(){}, openUrl(){}, allowInstalls(){},
     checkUpdate(){ emit('update',{state:'available',tag:'v5',size:2100000,notes:'v2.1: auto-ažuriranja i Instagram kontakt'}); },
     installUpdate(){ let p=0; const iv=setInterval(()=>{p+=20; emit('update',{state:'progress',pct:p,tag:'v5'}); if(p>=100){clearInterval(iv); emit('update',{state:'installing'});}},300); }
   };
