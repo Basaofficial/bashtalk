@@ -13,6 +13,10 @@ Offline walkie-talkie i chat za Android. Radi preko Wi-Fija ili hotspota, bez in
 - **Automatski (v2):** Bluetooth i Wi-Fi uključeni, otvori #Bash Talk – telefoni u blizini se sami pronađu i spoje (Google Nearby, bez hotspota i interneta).
 - **Hotspot:** jedan telefon upali hotspot, ostali se spoje – veći domet.
 
+## Wi-Fi Direct i UWB (v2.2)
+- **⚡ Wi-Fi Direct:** telefoni sami naprave Wi-Fi Direct grupu na 2,4 GHz (bez pitanja) – veći domet i bolji zvuk od Bluetootha.
+- **📍 UWB radar:** na telefonima s UWB-om (npr. Galaxy S26 / S26 Ultra) tačna udaljenost i strelica prema drugom telefonu. Dodirni ime uređaja.
+
 ## Pozadina
 U Postavkama uključi „Radi u pozadini” – radi i kad je ekran ugašen, a „Pričaj / Stop / Isključi” su u obavještenju.
 

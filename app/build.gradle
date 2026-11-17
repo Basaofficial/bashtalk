@@ -1,10 +1,11 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
     namespace 'com.basa.bashtalk'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.basa.bashtalk'
@@ -39,6 +40,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
     lint {
         checkReleaseBuilds false
         abortOnError false
@@ -47,4 +52,6 @@ android {
 
 dependencies {
     implementation 'com.google.android.gms:play-services-nearby:19.3.0'
+    implementation 'androidx.core.uwb:uwb:1.0.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
 }

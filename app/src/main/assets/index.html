@@ -171,6 +171,18 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
 #upd .box{width:100%;max-width:380px;background:#070a05;border:1px solid var(--g2);border-radius:24px;padding:22px;box-shadow:0 0 40px rgba(141,255,26,.2);animation:up .2s}
 #upd h3{font-size:20px;color:var(--g);text-shadow:var(--glow);margin-bottom:4px}
 #upd .notes{max-height:160px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5;color:var(--t);margin:12px 0;white-space:pre-wrap}
+#find{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,#0c1a06,#000 70%);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:44;padding:24px;text-align:center}
+#find.show{display:flex}
+#find .who{font-size:22px;font-weight:800}
+#find .sub{color:var(--mut);font-size:13px;margin-top:4px}
+#find .arrowWrap{width:min(70vw,280px);aspect-ratio:1;margin:28px 0;position:relative;display:flex;align-items:center;justify-content:center}
+#find .arrowWrap:before{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--line);box-shadow:inset 0 0 40px rgba(141,255,26,.08)}
+#find svg{width:62%;height:62%;color:var(--g);filter:drop-shadow(0 0 18px rgba(141,255,26,.7));transition:transform .25s ease-out}
+#find .dist{font-size:64px;font-weight:900;color:var(--g);text-shadow:var(--glow);line-height:1}
+#find .dist small{font-size:22px;font-weight:700;margin-left:4px}
+#find .hot{font-size:15px;font-weight:700;margin-top:8px}
+#find .close{position:absolute;top:18px;right:18px}
+.tagd{display:inline-block;background:var(--gdim);color:var(--g);border-radius:8px;padding:1px 6px;font-weight:800;font-size:11px;margin-left:4px}
 #buzzFx{position:fixed;inset:0;pointer-events:none;z-index:60;box-shadow:inset 0 0 0 0 var(--yel)}
 #buzzFx.go{animation:bz .9s}
 @keyframes bz{0%,40%,80%{box-shadow:inset 0 0 80px 10px rgba(255,210,26,.7)}20%,60%,100%{box-shadow:inset 0 0 0 0 transparent}}
@@ -260,6 +272,12 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
           <button class="btn" style="flex:1" id="permBtn">🔑 Dozvole</button>
         </div>
         <div class="hint" id="nbErr" style="margin-top:10px;color:var(--red);display:none"></div>
+      </div>
+
+      <div class="sec">Wi-Fi Direct i UWB</div>
+      <div class="card">
+        <div class="set" style="padding-top:0"><div class="l"><b id="wfdTitle">⚡ Wi-Fi Direct</b><span id="wfdSub">Telefoni sami naprave Wi-Fi vezu (2,4 GHz) – veći domet, čišći zvuk</span></div><div class="tg" data-k="wfd"></div></div>
+        <div class="set" style="border:0;padding-bottom:0"><div class="l"><b id="uwbTitle">📍 UWB radar</b><span id="uwbSub">Tačna udaljenost i smjer do drugih telefona s UWB-om</span></div></div>
       </div>
 
       <div class="sec">Ili preko hotspota</div>
@@ -353,6 +371,18 @@ input[type=range]{width:100%;accent-color:var(--g);margin-top:10px}
     <button class="btn g" style="flex:1.4" id="updGo">Instaliraj sad</button>
   </div>
 </div></div>
+<div id="find">
+  <button class="btn sq close" id="findX">✕</button>
+  <div class="who" id="findWho">—</div>
+  <div class="sub" id="findSub">UWB · drži telefon uspravno ispred sebe</div>
+  <div class="arrowWrap"><svg id="findArrow" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4.5 20.3a.6.6 0 0 0 .85.73L12 17.5l6.65 3.53a.6.6 0 0 0 .85-.73z"/></svg></div>
+  <div class="dist" id="findDist">—</div>
+  <div class="hot" id="findHot"></div>
+  <div class="row" style="margin-top:22px;max-width:320px">
+    <button class="btn" style="flex:1" id="findBuzz">📳 Zovni</button>
+    <button class="btn g" style="flex:1" id="findTalk">🎙️ Pričaj</button>
+  </div>
+</div>
 <div id="toast"></div>
 <div id="buzzFx"></div>
 
@@ -390,6 +420,7 @@ function show(v){
 }
 $$('nav button').forEach(b => b.onclick = () => { show(b.dataset.v); A.vib && A.vib(8); });
 window.onBack = () => {
+  if ($('#find').classList.contains('show')) { findId=''; $('#find').classList.remove('show'); return true; }
   if ($('#upd').classList.contains('show')) { $('#upd').classList.remove('show'); return true; }
   if ($('#sheet').classList.contains('show')) { closeSheet(); return true; }
   if (view !== 'radio') { show('radio'); return true; }
@@ -542,8 +573,8 @@ function renderPeers(){
     const same = p.ch === st.ch;
     return `<div class="peer ${p.talk?'talk':''}">
       <div class="av">${esc(initials(p.name))}<span class="dot ${fresh?'on':'mid'}"></span></div>
-      <div class="pi"><b>${esc(p.name)}${p.talk?' 🎙️':''}</b>
-        <span>${same?'<span style="color:var(--g)">● Kanal '+p.ch+'</span>':'Kanal '+p.ch} · ${p.via==='nearby'?'🔵':'📶'}${p.rtt>0?' · '+p.rtt+' ms':''}</span></div>
+      <div class="pi" data-find="${esc(p.id)}"><b>${esc(p.name)}${p.talk?' 🎙️':''}</b>
+        <span>${same?'<span style="color:var(--g)">● K'+p.ch+'</span>':'K'+p.ch} · ${p.via==='nearby'?'🔵':p.via==='wfd'?'⚡':'📶'}${p.rtt>0?' · '+p.rtt+' ms':''}${p.d>=0?'<span class="tagd">📍 '+fmtD(p.d)+'</span>':''}</span></div>
       ${bars(p.rtt,p.age)}
       <div class="pa">
         <button class="btn sq" data-a="talk" data-id="${esc(p.id)}" title="Pričaj samo njemu">🎙️</button>
@@ -551,6 +582,7 @@ function renderPeers(){
         <button class="btn sq" data-a="buzz" data-id="${esc(p.id)}" title="Zovni (vibracija)">📳</button>
       </div></div>`;
   }).join('');
+  $$('#peerList [data-find]').forEach(b => b.onclick = () => openFind(b.dataset.find));
   $$('#peerList [data-a]').forEach(b => b.onclick = () => {
     const id = b.dataset.id, a = b.dataset.a;
     if (a === 'buzz') { A.buzz(id); toast('📳 Zoveš ' + nameOf(id)); }
@@ -568,12 +600,16 @@ function renderPeers(){
       let h = 0; for (const c of p.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
       b.dataset.ang = (h % 360);
     }
-    const r = p.rtt > 0 ? Math.min(62, 22 + p.rtt / 3) : 45;
-    const a = b.dataset.ang * Math.PI / 180;
+    let r = p.rtt > 0 ? Math.min(62, 22 + p.rtt / 3) : 45;
+    let a = b.dataset.ang * Math.PI / 180;
+    if (p.d >= 0) {
+      r = Math.min(66, 8 + p.d * 3.2);                       // ~20 m = rub radara
+      if (p.az !== undefined) a = (p.az - 90) * Math.PI / 180; // 0° = naprijed (gore)
+    }
     b.style.left = `calc(50% + ${Math.cos(a) * r * 1.6}px)`;
     b.style.top = `calc(50% + ${Math.sin(a) * r}px)`;
     b.style.opacity = p.age < 3500 ? 1 : .4;
-    b.querySelector('em').textContent = p.name;
+    b.querySelector('em').textContent = p.name + (p.d >= 0 ? ' · ' + fmtD(p.d) : '');
   });
 
   if (target && !peers.find(p => p.id === target)) setTarget('');
@@ -606,6 +642,53 @@ $$('.tg').forEach(t => {
 $('#appSetBtn').onclick = () => A.openAppSettings();
 function permState(){ if (st.permsOk === false) { $('#nbErr').style.display='block'; $('#nbErr').textContent = 'Nedostaju dozvole (Bluetooth / uređaji u blizini). Dodirni „Dozvole”.'; } }
 function micState(){ $('#micSt').textContent = st.micOk ? '✓ Dozvoljen' : '✕ Nije dozvoljen – potreban za walkie-talkie'; $('#micSt').style.color = st.micOk ? 'var(--g)' : 'var(--red)'; }
+
+/* ---------- UWB traženje ---------- */
+const fmtD = d => d < 10 ? d.toFixed(1) + ' m' : Math.round(d) + ' m';
+let findId = '', lastD = {};
+function openFind(id){
+  findId = id; $('#find').classList.add('show');
+  $('#findWho').textContent = nameOf(id);
+  updFind();
+}
+function updFind(){
+  if (!findId) return;
+  const p = peers.find(x => x.id === findId);
+  if (!p) { $('#findSub').textContent = 'Uređaj više nije u blizini'; return; }
+  if (p.d >= 0) {
+    $('#findDist').innerHTML = (p.d < 10 ? p.d.toFixed(1) : Math.round(p.d)) + '<small>m</small>';
+    const az = p.az !== undefined ? p.az : null;
+    $('#findArrow').style.transform = az !== null ? `rotate(${az}deg)` : 'none';
+    $('#findArrow').style.opacity = az !== null ? 1 : .35;
+    const prev = lastD[findId];
+    let hot = p.d < 1 ? '🔥 Tu je, skroz blizu!' : p.d < 3 ? '🔥 Vruće' : p.d < 8 ? '🌤️ Toplo' : '❄️ Hladno';
+    if (prev !== undefined && Math.abs(prev - p.d) > .3) hot += prev > p.d ? ' · približavaš se' : ' · udaljavaš se';
+    $('#findHot').textContent = hot;
+    $('#findSub').textContent = az !== null ? 'Prati strelicu · drži telefon uspravno' : 'Udaljenost OK · za smjer drži telefon uspravno';
+    lastD[findId] = p.d;
+  } else {
+    $('#findDist').innerHTML = '—';
+    $('#findArrow').style.opacity = .25;
+    $('#findHot').textContent = '';
+    $('#findSub').textContent = p.uwb ? 'Pokrećem UWB mjerenje…' : 'Taj telefon nema UWB – vidi se samo veza, ne udaljenost';
+  }
+}
+$('#findX').onclick = () => { findId = ''; $('#find').classList.remove('show'); };
+$('#findBuzz').onclick = () => { if (findId) { A.buzz(findId); toast('📳 Zoveš ' + nameOf(findId)); } };
+$('#findTalk').onclick = () => { if (findId) { setTarget(findId); findId=''; $('#find').classList.remove('show'); show('radio'); } };
+function wfdState(st, msg, clients){
+  const t = $('#wfdTitle'), sub = $('#wfdSub');
+  const L = {go:'⚡ Wi-Fi Direct · vođa grupe', client:'⚡ Wi-Fi Direct · spojen', creating:'⚡ Wi-Fi Direct · pravim grupu…', joining:'⚡ Wi-Fi Direct · spajam se…', idle:'⚡ Wi-Fi Direct · čeka druge', off:'⚡ Wi-Fi Direct · isključen', unsupported:'⚡ Wi-Fi Direct · nije podržan', error:'⚠️ Wi-Fi Direct'};
+  t.textContent = L[st] || '⚡ Wi-Fi Direct';
+  sub.textContent = st === 'go' ? `Spojenih: ${clients} · 2,4 GHz` : st === 'error' ? (msg || 'Greška') : st === 'client' ? 'Glas i poruke idu preko Wi-Fija' : 'Telefoni sami naprave Wi-Fi vezu (2,4 GHz) – veći domet, čišći zvuk';
+  sub.style.color = st === 'error' ? 'var(--red)' : '';
+}
+function uwbState(st, msg){
+  const L = {on:'📍 UWB radar · aktivan', unsupported:'📍 UWB · telefon nema UWB', error:'⚠️ UWB', off:'📍 UWB radar'};
+  $('#uwbTitle').textContent = L[st] || '📍 UWB radar';
+  $('#uwbSub').textContent = st === 'error' ? (msg || 'Greška') + '' : st === 'on' ? 'Dodirni ime uređaja za strelicu i udaljenost' : st === 'unsupported' ? 'Radar pokazuje približno (po pingu)' : 'Tačna udaljenost i smjer do drugih telefona s UWB-om';
+  $('#uwbSub').style.color = st === 'error' ? 'var(--red)' : '';
+}
 
 /* ---------- ažuriranja + kontakt ---------- */
 let updInfo = null;
@@ -663,6 +746,9 @@ window.onEvent = function(t, d){
       peers = d.peers.sort((a,b) => (b.ch===st.ch) - (a.ch===st.ch) || a.name.localeCompare(b.name));
       if (d.ips) $('#myIps').textContent = d.ips.map(x => x.ip).join(', ') || '— (nisi na Wi-Fiju)';
       if (d.nearby) nbState(d.nearby, d.nearbyMsg, d.links);
+      if (d.wfd) wfdState(d.wfd, d.wfdMsg, d.wfdClients);
+      if (d.uwbSt) uwbState(d.uwbSt, d.uwbMsg);
+      updFind();
       renderPeers();
       break;
     case 'join':
@@ -706,6 +792,13 @@ window.onEvent = function(t, d){
     case 'error': toast(d.msg, true); break;
     case 'nearby': nbState(d.state, d.msg, 0); break;
     case 'update': onUpdate(d); break;
+    case 'uwb': uwbState(d.state, d.msg); break;
+    case 'range': {
+      const p = peers.find(x => x.id === d.id);
+      if (p) { p.d = d.d; if (d.az !== undefined) p.az = d.az; else delete p.az; }
+      if (findId === d.id) updFind();
+      break;
+    }
   }
 };
 
@@ -723,7 +816,7 @@ function makeDemo(){
   const ppl = [{id:'a1',name:'Mirza',ch:1},{id:'b2',name:'Kemo',ch:1},{id:'c3',name:'Ivan Montaža',ch:2}];
   let t0 = Date.now();
   const emit = (t,d) => setTimeout(() => window.onEvent && window.onEvent(t,d), 0);
-  setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], via:['nearby','nearby','wifi'][i], talk:false})), ips:[], nearby:'on', nearbyMsg:'', links:2}), 1000);
+  setInterval(() => emit('peers', {peers: ppl.map((p,i) => ({...p, ip:'192.168.43.'+(10+i), age: 400 + i*300, rtt: [12,45,140][i], via:['wfd','nearby','wifi'][i], uwb:i<2, d:[3.4,11.8,-1][i], az:[25,-60,undefined][i], talk:false})), ips:[], nearby:'on', nearbyMsg:'', links:2, wfd:'go', wfdClients:1, uwbSt:'on'}), 1000);
   setTimeout(() => emit('msg', {mid:'x1', id:'a1', name:'Mirza', text:'Ima li struje na -1? 😄', ts:Date.now()}), 1500);
   return {
     getState: () => JSON.stringify({id:'me',name:'Basa',ch:1,gain:1.5,sounds:true,keepOn:true,volPtt:true,vib:true,auto:true,bg:false,micOk:true,permsOk:true,ips:[],upd:'auto',version:'2.1.4',build:4}),

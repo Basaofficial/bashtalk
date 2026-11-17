@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
  *  - LAN (UDP) – kad su uređaji na istom Wi-Fiju ili hotspotu (brže)
  * Glas: 16 kHz, G.711 µ-law (128 kbit/s), paketi po 20 ms.
  */
-public class Engine implements NearbyLink.Sink {
+public class Engine implements NearbyLink.Sink, WifiDirectLink.Sink, UwbLink.Sink {
 
     public interface Listener {
         void onEvent(String type, JSONObject data);
@@ -71,6 +71,9 @@ public class Engine implements NearbyLink.Sink {
         long lastSeen, joined;
         boolean talking;
         int rtt = -1;
+        boolean wfdCap, wfdGo, uwbCap;
+        float dist = -1f, az = Float.NaN, el = Float.NaN;
+        long rangeAt, rangeEmit;
     }
 
     static class Pending {
@@ -98,6 +101,13 @@ public class Engine implements NearbyLink.Sink {
     private volatile NearbyLink nearby;
     private volatile String nearbyState = "off";
     private volatile String nearbyMsg = "";
+    volatile boolean wfdEnabled = true;
+    private volatile WifiDirectLink wfd;
+    private volatile String wfdState = "off", wfdMsg = "";
+    private volatile int wfdClients;
+    private long wfdLonely;
+    private volatile UwbLink uwb;
+    private volatile String uwbState = "off", uwbMsg = "";
 
     final ConcurrentHashMap<String, Peer> peers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> epToId = new ConcurrentHashMap<>();
@@ -181,6 +191,13 @@ public class Engine implements NearbyLink.Sink {
         new Thread(this::playerLoop, "player").start();
         new Thread(this::tickLoop, "tick").start();
         if (auto) startNearby();
+        if (wfdEnabled) startWfd();
+        try {
+            uwb = new UwbLink(ctx, myId, this);
+            uwb.start();
+        } catch (Throwable t) {
+            onUwbState("error", t.getMessage());
+        }
     }
 
     public void stop() {
@@ -189,6 +206,8 @@ public class Engine implements NearbyLink.Sink {
         running = false;
         talking = false;
         stopNearby();
+        try { if (wfd != null) wfd.stop(); } catch (Throwable ignored) { }
+        try { if (uwb != null) uwb.shutdown(); } catch (Throwable ignored) { }
         try { if (ctrlSock != null) ctrlSock.close(); } catch (Exception ignored) { }
         try { if (audioSock != null) audioSock.close(); } catch (Exception ignored) { }
         try { if (mlock != null) mlock.release(); } catch (Exception ignored) { }
@@ -207,6 +226,119 @@ public class Engine implements NearbyLink.Sink {
 
     public void stopNearby() {
         try { if (nearby != null) nearby.stop(); } catch (Throwable ignored) { }
+    }
+
+    public void startWfd() {
+        try {
+            if (wfd == null) wfd = new WifiDirectLink(ctx, this);
+            wfd.start();
+        } catch (Throwable t) {
+            onWfdState("error", t.getMessage(), 0);
+        }
+    }
+
+    public void setWfd(boolean on) {
+        wfdEnabled = on;
+        if (on) startWfd();
+        else try { if (wfd != null) wfd.stop(); } catch (Throwable ignored) { }
+    }
+
+    private boolean wfdCapable() {
+        WifiDirectLink w = wfd;
+        return wfdEnabled && w != null && w.isOn();
+    }
+
+    // ------------------------------------------------------------ Wi-Fi Direct / UWB sinks
+
+    @Override
+    public void onWfdState(String state, String msg, int clients) {
+        wfdState = state;
+        wfdMsg = msg == null ? "" : msg;
+        wfdClients = clients;
+    }
+
+    @Override
+    public void uwbSend(String peerId, String json) {
+        exec(() -> {
+            Peer p = peers.get(peerId);
+            if (p == null) return;
+            JSONObject o = new JSONObject(json);
+            o.put("id", myId);
+            o.put("name", name);
+            o.put("ch", channel);
+            sendTo(p, o);
+        });
+    }
+
+    @Override
+    public void onRange(String peerId, float dist, float azimuth, float elevation) {
+        Peer p = peers.get(peerId);
+        if (p == null) return;
+        long now = System.currentTimeMillis();
+        p.dist = dist;
+        p.az = azimuth;
+        p.el = elevation;
+        p.rangeAt = dist >= 0 ? now : 0;
+        if (now - p.rangeEmit < 150) return;
+        p.rangeEmit = now;
+        try {
+            JSONObject o = new JSONObject();
+            o.put("id", peerId);
+            o.put("d", dist);
+            if (!Float.isNaN(azimuth)) o.put("az", azimuth);
+            if (!Float.isNaN(elevation)) o.put("el", elevation);
+            emit("range", o);
+        } catch (Exception ignored) { }
+    }
+
+    @Override
+    public void onUwbState(String state, String msg) {
+        uwbState = state;
+        uwbMsg = msg == null ? "" : msg;
+        try {
+            JSONObject o = new JSONObject();
+            o.put("state", state);
+            o.put("msg", uwbMsg);
+            emit("uwb", o);
+        } catch (Exception ignored) { }
+    }
+
+    /** Svake 3 s: dogovor oko Wi-Fi Direct grupe i UWB sesija. */
+    private void coordinate() {
+        long now = System.currentTimeMillis();
+        WifiDirectLink w = wfd;
+        if (wfdCapable()) {
+            String leader = myId;
+            boolean any = false;
+            for (Peer p : peers.values()) {
+                if (!p.wfdCap) continue;
+                any = true;
+                if (p.id.compareTo(leader) < 0) leader = p.id;
+            }
+            if (!any) {
+                if (w.isGo && w.clients == 0) {
+                    if (wfdLonely == 0) wfdLonely = now;
+                    else if (now - wfdLonely > 90000) { w.leave(); wfdLonely = 0; }
+                }
+            } else {
+                wfdLonely = 0;
+                if (leader.equals(myId)) {
+                    w.ensureGroup();
+                } else {
+                    Peer L = peers.get(leader);
+                    if (L != null && L.wfdGo) {
+                        if (w.isGo) w.leave();               // spoji se u vođinu grupu
+                        else if (!w.isClient) w.join();
+                    }
+                }
+            }
+        }
+        UwbLink u = uwb;
+        if (u != null && u.getAvailable()) {
+            for (Peer p : peers.values()) {
+                if (p.uwbCap && now - p.lastSeen < 4000) u.tryStart(p.id);
+            }
+        }
     }
 
     public void setAuto(boolean on) {
@@ -234,8 +366,7 @@ public class Engine implements NearbyLink.Sink {
     public void onConnected(String ep, String peerId) {
         if (peerId != null) epToId.put(ep, peerId);
         exec(() -> {
-            JSONObject h = base("hello");
-            h.put("talk", talking);
+            JSONObject h = hello();
             NearbyLink nl = nearby;
             if (nl != null) nl.send(ep, bytes(h));
         });
@@ -268,6 +399,17 @@ public class Engine implements NearbyLink.Sink {
         try {
             worker.execute(() -> { try { j.run(); } catch (Exception ignored) { } });
         } catch (Exception ignored) { }
+    }
+
+    private JSONObject hello() throws Exception {
+        JSONObject h = base("hello");
+        h.put("talk", talking);
+        h.put("wfd", wfdCapable());
+        WifiDirectLink w = wfd;
+        h.put("wfdGo", w != null && w.isGo);
+        UwbLink u = uwb;
+        h.put("uwb", u != null && u.getAvailable());
+        return h;
     }
 
     private JSONObject base(String type) throws Exception {
@@ -419,8 +561,7 @@ public class Engine implements NearbyLink.Sink {
                 e.put("name", p.name);
                 e.put("ch", p.ch);
                 emit("join", e);
-                JSONObject h = base("hello");
-                h.put("talk", talking);
+                JSONObject h = hello();
                 reply(h, from, ep);
             } catch (Exception ignored) { }
             beep(ToneGenerator.TONE_PROP_ACK, 150);
@@ -433,11 +574,23 @@ public class Engine implements NearbyLink.Sink {
             case "hello": {
                 Peer p = touch(o, from, ep);
                 p.talking = o.optBoolean("talk", false);
+                p.wfdCap = o.optBoolean("wfd", false);
+                p.wfdGo = o.optBoolean("wfdGo", false);
+                p.uwbCap = o.optBoolean("uwb", false);
+                break;
+            }
+            case "uwbInit":
+            case "uwbAddr": {
+                touch(o, from, ep);
+                UwbLink u = uwb;
+                if (u == null || !myId.equals(o.optString("to"))) break;
+                if ("uwbInit".equals(o.optString("t"))) u.onInit(o.optString("id"), o.toString());
+                else u.onAddr(o.optString("id"), o.toString());
                 break;
             }
             case "bye": {
                 Peer p = peers.remove(o.optString("id"));
-                if (p != null) emitLeave(p);
+                if (p != null) { emitLeave(p); if (uwb != null) uwb.stopPeer(p.id); }
                 break;
             }
             case "ping": {
@@ -511,8 +664,7 @@ public class Engine implements NearbyLink.Sink {
                 NearbyLink nl = nearby;
                 if (nl != null && n % 2 == 0) nl.tick();
                 if (n % 6 == 0) exec(() -> {
-                    JSONObject h = base("hello");
-                    h.put("talk", talking);
+                    JSONObject h = hello();
                     sendToAll(h);
                 });
                 if (n % 12 == 3) exec(() -> {
@@ -521,6 +673,7 @@ public class Engine implements NearbyLink.Sink {
                     for (Peer p : peers.values()) sendTo(p, ping);
                 });
                 if (n % 2 == 0) exec(this::retryPending);
+                if (n % 12 == 6) exec(this::coordinate);
                 if (n % 4 == 0) exec(() -> {
                     long now = System.currentTimeMillis();
                     Iterator<Peer> it = peers.values().iterator();
@@ -529,6 +682,7 @@ public class Engine implements NearbyLink.Sink {
                         if (now - p.lastSeen > PEER_TIMEOUT) {
                             it.remove();
                             emitLeave(p);
+                            if (uwb != null) uwb.stopPeer(p.id);
                         }
                     }
                     emitPeers();
@@ -552,7 +706,13 @@ public class Engine implements NearbyLink.Sink {
             o.put("name", p.name);
             o.put("ch", p.ch);
             o.put("ip", p.addr != null ? p.addr.getHostAddress() : "");
-            o.put("via", lanFresh(p) ? "wifi" : nearbyOk(p) ? "nearby" : "wifi");
+            boolean direct = p.addr != null && p.addr.getHostAddress().startsWith("192.168.49.");
+            o.put("via", lanFresh(p) ? (direct ? "wfd" : "wifi") : nearbyOk(p) ? "nearby" : "wifi");
+            if (p.rangeAt > 0 && now - p.rangeAt < 3000) {
+                o.put("d", p.dist);
+                if (!Float.isNaN(p.az)) o.put("az", p.az);
+            }
+            o.put("uwb", p.uwbCap);
             o.put("age", now - p.lastSeen);
             o.put("rtt", p.rtt);
             o.put("talk", p.talking);
@@ -565,6 +725,11 @@ public class Engine implements NearbyLink.Sink {
         d.put("nearby", nearbyState);
         d.put("nearbyMsg", nearbyMsg);
         d.put("links", nl != null ? nl.connectedCount() : 0);
+        d.put("wfd", wfdEnabled ? wfdState : "off");
+        d.put("wfdMsg", wfdMsg);
+        d.put("wfdClients", wfdClients);
+        d.put("uwbSt", uwbState);
+        d.put("uwbMsg", uwbMsg);
         emit("peers", d);
     }
 

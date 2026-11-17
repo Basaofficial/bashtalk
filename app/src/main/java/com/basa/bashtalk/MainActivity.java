@@ -114,6 +114,7 @@ public class MainActivity extends Activity implements Engine.Listener {
             l.add(Manifest.permission.BLUETOOTH_SCAN);
             l.add(Manifest.permission.BLUETOOTH_ADVERTISE);
             l.add(Manifest.permission.BLUETOOTH_CONNECT);
+            if (UwbLink.hasHardware(this)) l.add(Manifest.permission.UWB_RANGING);
         }
         if (Build.VERSION.SDK_INT >= 33) {
             l.add(Manifest.permission.NEARBY_WIFI_DEVICES);
@@ -141,6 +142,7 @@ public class MainActivity extends Activity implements Engine.Listener {
         super.onRequestPermissionsResult(code, perms, res);
         Engine e = TalkService.eng();
         if (e != null && e.auto) e.startNearby();     // ponovo pokreni nakon dozvola
+        if (e != null && e.wfdEnabled) e.startWfd();
         if (prefs.getBoolean("bg", false)) startEngine();  // osvježi tip foreground usluge (mikrofon)
     }
 
@@ -209,6 +211,9 @@ public class MainActivity extends Activity implements Engine.Listener {
                 o.put("volPtt", prefs.getBoolean("volPtt", true));
                 o.put("vib", prefs.getBoolean("vib", true));
                 o.put("auto", prefs.getBoolean("auto", true));
+                o.put("wfd", prefs.getBoolean("wfd", true));
+                o.put("hasUwb", UwbLink.hasHardware(MainActivity.this));
+                o.put("hasWfd", WifiDirectLink.supported(MainActivity.this));
                 o.put("bg", prefs.getBoolean("bg", false));
                 o.put("ips", Engine.localIps());
                 o.put("micOk", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
@@ -258,6 +263,7 @@ public class MainActivity extends Activity implements Engine.Listener {
                 case "keepOn": applyKeepScreen(v); break;
                 case "sounds": if (e != null) e.sounds = v; break;
                 case "auto": if (e != null) e.setAuto(v); break;
+                case "wfd": if (e != null) e.setWfd(v); break;
                 case "bg": {
                     Intent i = new Intent(MainActivity.this, TalkService.class);
                     if (v) {

@@ -93,6 +93,7 @@ public class TalkService extends Service implements Engine.Listener {
         engine.gain = prefs.getFloat("gain", 1.5f);
         engine.sounds = prefs.getBoolean("sounds", true);
         engine.auto = prefs.getBoolean("auto", true);
+        engine.wfdEnabled = prefs.getBoolean("wfd", true);
         createChannels();
         inst = this;
         engine.start();
